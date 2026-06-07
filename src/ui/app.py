@@ -1,0 +1,148 @@
+"""
+Main Application Window — CustomTkinter with sidebar navigation (Modern & i18n)
+"""
+import customtkinter as ctk
+from src.ui.downloader_tab import DownloaderTab
+from src.ui.spotify_tab import SpotifyTab
+from src.ui.lyrics_tab import LyricsTab
+from src.ui.settings_tab import SettingsTab
+from src.utils.config_manager import load_config
+from src.utils.i18n import _
+
+# Modern Color palette
+COLORS = {
+    "bg_dark":       "#09090B", # Zinc 950
+    "sidebar_bg":    "#18181B", # Zinc 900
+    "card_bg":       "#121214", 
+    "accent":        "#8B5CF6", # Vibrant Violet
+    "accent_hover":  "#A78BFA",
+    "accent2":       "#38BDF8", # Sky blue
+    "success":       "#22C55E",
+    "warning":       "#F59E0B",
+    "error":         "#EF4444",
+    "text_primary":  "#FAFAFA",
+    "text_secondary":"#A1A1AA", # Zinc 400
+    "border":        "#27272A", # Zinc 800
+}
+
+class MyDLPApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        config = load_config()
+        ctk.set_appearance_mode(config.get("appearance_mode", "dark"))
+
+        # Window setup
+        self.title(_("app_name"))
+        self.geometry("1100x720")
+        self.minsize(900, 600)
+        self.configure(fg_color=COLORS["bg_dark"])
+
+        # Set window icon if available
+        try:
+            self.iconbitmap("assets/icon.ico")
+        except Exception:
+            pass
+
+        self._build_ui()
+        self._select_tab(0)
+
+    def _build_ui(self):
+        """Build sidebar + main content area."""
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # ── Sidebar ──────────────────────────────────────────────────
+        self.sidebar = ctk.CTkFrame(self, width=240, fg_color=COLORS["sidebar_bg"],
+                                    corner_radius=0)
+        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)
+        self.sidebar.grid_rowconfigure(10, weight=1)
+
+        # Logo
+        logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        logo_frame.grid(row=0, column=0, padx=24, pady=(32, 24), sticky="w")
+
+        logo_icon = ctk.CTkLabel(logo_frame, text="⬇", font=ctk.CTkFont(size=28, weight="bold"),
+                                  text_color=COLORS["accent"])
+        logo_icon.grid(row=0, column=0, padx=(0, 12))
+
+        logo_text = ctk.CTkLabel(logo_frame, text=_("app_name"),
+                                  font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
+                                  text_color=COLORS["text_primary"])
+        logo_text.grid(row=0, column=1)
+
+        # Separator
+        sep = ctk.CTkFrame(self.sidebar, height=1, fg_color=COLORS["border"])
+        sep.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 20))
+
+        # Nav buttons
+        nav_items = [
+            (_("nav_downloader"), 0, "downloader"),
+            (_("nav_spotify"),    1, "spotify"),
+            (_("nav_lyrics"),     2, "lyrics"),
+            (_("nav_settings"),   3, "settings"),
+        ]
+
+        self._nav_buttons = []
+        for label, idx, _id in nav_items:
+            btn = ctk.CTkButton(
+                self.sidebar, text=label,
+                font=ctk.CTkFont(family="Segoe UI", size=15),
+                anchor="w", height=48,
+                fg_color="transparent",
+                hover_color=COLORS["border"],
+                text_color=COLORS["text_secondary"],
+                corner_radius=12,
+                command=lambda i=idx: self._select_tab(i),
+            )
+            btn.grid(row=2 + idx, column=0, padx=16, pady=4, sticky="ew")
+            self._nav_buttons.append(btn)
+
+        # Version label at bottom
+        ver_label = ctk.CTkLabel(self.sidebar, text=_("version_info"),
+                                  font=ctk.CTkFont(size=11),
+                                  text_color=COLORS["text_secondary"])
+        ver_label.grid(row=10, column=0, padx=20, pady=24, sticky="sw")
+
+        # ── Content area ─────────────────────────────────────────────
+        self.content = ctk.CTkFrame(self, fg_color=COLORS["bg_dark"], corner_radius=0)
+        self.content.grid(row=0, column=1, sticky="nsew")
+        self.content.grid_columnconfigure(0, weight=1)
+        self.content.grid_rowconfigure(0, weight=1)
+
+        # Build all tabs (hidden by default)
+        self._tabs = [
+            DownloaderTab(self.content, colors=COLORS),
+            SpotifyTab(self.content, colors=COLORS),
+            LyricsTab(self.content, colors=COLORS),
+            SettingsTab(self.content, colors=COLORS, refresh_callback=self._on_settings_saved),
+        ]
+        for tab in self._tabs:
+            tab.grid(row=0, column=0, sticky="nsew")
+
+    def _select_tab(self, index: int):
+        """Show the selected tab and update sidebar nav."""
+        for i, tab in enumerate(self._tabs):
+            if i == index:
+                tab.tkraise()
+            
+            btn = self._nav_buttons[i]
+            if i == index:
+                btn.configure(fg_color=COLORS["accent"], text_color=COLORS["text_primary"])
+            else:
+                btn.configure(fg_color="transparent", text_color=COLORS["text_secondary"])
+
+    def _on_settings_saved(self):
+        """Called when settings are saved — re-apply appearance and language."""
+        config = load_config()
+        mode = config.get("appearance_mode", "dark")
+        ctk.set_appearance_mode(mode)
+        
+        # Rebuild UI to apply language changes instantly
+        self.sidebar.destroy()
+        self.content.destroy()
+        
+        self.title(_("app_name"))
+        self._build_ui()
+        self._select_tab(3) # Stay on the Settings tab
