@@ -14,10 +14,6 @@
 * **Multi-Language Support (i18n):** Easily switch the UI between English and Arabic.
 * **Metadata & Thumbnails:** Automatically embed thumbnails and high-quality metadata directly into your downloaded audio and video files.
 
----
-
-## 📸 Screenshots
-*(You can add screenshots of your application here)*
 
 ---
 
