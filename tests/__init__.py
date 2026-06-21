@@ -1,0 +1,1 @@
+"""Make tests/ a Python package so pytest discovery is reliable."""

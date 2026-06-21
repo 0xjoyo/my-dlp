@@ -200,7 +200,7 @@ def get_dismissed_version() -> Optional[str]:
     """
     from src.utils.config_manager import load_config
     cfg = load_config()
-    return cfg.get("update_dismissed_version")
+    return cfg.get("update_dismissed_version") or None
 
 
 def set_dismissed_version(version: str) -> None:

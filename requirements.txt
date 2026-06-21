@@ -11,3 +11,9 @@ python-vlc>=3.0.18121
 mutagen>=1.47.0
 pystray>=0.19.5
 packaging>=23.0
+tkinterdnd2>=0.4.2 ; sys_platform == "win32" or (sys_platform == "linux" and platform_machine != "aarch64")
+
+# Dev / test dependencies (installed by CI; optional for end users)
+pytest>=8.0
+pytest-cov>=5.0
+pytest-mock>=3.12

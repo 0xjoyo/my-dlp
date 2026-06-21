@@ -8,8 +8,19 @@ build/
 dist/
 *.spec
 
-# User specific config
+# Test / coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# User-specific config (per-user; never commit)
 config.json
+history.json
+
+# GitHub CLI artifacts (used during automated builds)
+gh_cli/
+gh.zip
 
 # IDEs
 .vscode/
@@ -19,3 +30,7 @@ config.json
 venv/
 env/
 .env
+
+# OS junk
+Thumbs.db
+.DS_Store

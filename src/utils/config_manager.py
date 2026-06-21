@@ -1,10 +1,46 @@
 """
 Config Manager — Read/Write settings to config.json
+Stores the user config in %APPDATA%/my-dlp/config.json on Windows so it
+survives reinstalls and works correctly when the app is frozen by PyInstaller
+and installed under Program Files (where Program Files paths are read-only).
 """
 import json
 import os
+import sys
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config.json")
+
+def _get_config_dir() -> str:
+    """
+    Return the directory where the user-specific config.json lives.
+
+    Resolution order:
+      1. MY_DLP_CONFIG_DIR env var (useful for tests / portable mode)
+      2. Windows: %APPDATA%/my-dlp
+      3. macOS:   ~/Library/Application Support/my-dlp
+      4. Linux:   $XDG_CONFIG_HOME/my-dlp or ~/.config/my-dlp
+    """
+    override = os.environ.get("MY_DLP_CONFIG_DIR")
+    if override:
+        return override
+
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming")
+        path = os.path.join(base, "my-dlp")
+    elif sys.platform == "darwin":
+        path = os.path.expanduser("~/Library/Application Support/my-dlp")
+    else:
+        xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+        path = os.path.join(xdg, "my-dlp")
+
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError:
+        # Fall back to user home if we cannot create the config dir
+        path = os.path.expanduser("~")
+    return path
+
+
+CONFIG_PATH = os.path.join(_get_config_dir(), "config.json")
 
 DEFAULTS = {
     "download_path": os.path.expanduser("~/Downloads"),
@@ -22,6 +58,7 @@ DEFAULTS = {
     "embed_thumbnail": True,
     "language": "en",
     "speed_limit": 0,
+    "update_dismissed_version": "",
 }
 
 

@@ -150,6 +150,11 @@ TRANSLATIONS = {
     # ── Drag & Drop ──
     "drag_drop_hint": {"ar": "🖱️ اسحب الروابط هنا مباشرة", "en": "🖱️ Drag & drop links here"},
 
+    # ── Spotify Search History ──
+    "sp_recent_searches": {"ar": "عمليات البحث الأخيرة", "en": "Recent searches"},
+    "sp_clear_history":  {"ar": "🗑 مسح السجل", "en": "🗑 Clear history"},
+    "sp_no_history":     {"ar": "ما فيه عمليات بحث سابقة.", "en": "No recent searches yet."},
+
     # ── Update Dialog (v1.2.0) ──
     "upd_dialog_title": {"ar": "تحديث جديد متاح", "en": "Update Available"},
     "upd_title":         {"ar": "🎉 يوجد إصدار جديد من my-dlp", "en": "A new my-dlp version is available"},

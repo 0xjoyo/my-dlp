@@ -53,7 +53,7 @@ class DownloaderTab(ctk.CTkFrame):
         url_card = self._card(scroll, _("card_url"))
         url_card.grid(row=0, column=0, padx=36, pady=(32, 16), sticky="ew")
         url_card.grid_columnconfigure(0, weight=1)
-        
+
         hint = ctk.CTkLabel(url_card, text=_("dl_batch_hint"), font=ctk.CTkFont("Segoe UI", 12), text_color=self.colors["text_secondary"])
         hint.grid(row=0, column=0, sticky="w", padx=24, pady=(0, 4))
 
@@ -70,6 +70,28 @@ class DownloaderTab(ctk.CTkFrame):
             text_color=self.colors["text_primary"],
         )
         self.url_textbox.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+
+        # Drag & drop support. We try to install tkinterdnd2 bindings on
+        # the textbox so the user can drag URLs from their browser into
+        # the field. If tkinterdnd2 isn't available (or the platform is
+        # Wayland with no support), the helper returns False and we
+        # fall back to the existing paste shortcut.
+        from src.utils.dnd import setup_dnd
+        dnd_ok = setup_dnd(
+            self.url_textbox,
+            on_drop=self._on_url_dropped,
+            on_unsupported_platform=self._on_dnd_unsupported,
+        )
+        # Show the hint label only when DnD is wired up — otherwise it'd
+        # just be a tease.
+        if dnd_ok:
+            dnd_hint = ctk.CTkLabel(
+                url_card,
+                text=_("drag_drop_hint"),
+                font=ctk.CTkFont("Segoe UI", 11),
+                text_color=self.colors["accent2"],
+            )
+            dnd_hint.grid(row=2, column=0, sticky="w", padx=24, pady=(4, 0))
 
         btn_frame = ctk.CTkFrame(url_row, fg_color="transparent")
         btn_frame.grid(row=0, column=1)
@@ -185,6 +207,42 @@ class DownloaderTab(ctk.CTkFrame):
                 self.url_textbox.insert("1.0", text.strip())
         except Exception:
             pass
+
+    def _on_url_dropped(self, item: str):
+        """
+        Called by the DnD helper when the user drops a URL (or file path)
+        onto the URL textbox. We accept URLs and ignore local file paths
+        (those wouldn't make sense for yt-dlp).
+        """
+        # Strip file:// prefix that some drag sources add
+        if item.startswith("file://"):
+            item = item[len("file://"):]
+        # Quick sanity check: is this an HTTP(S) URL?
+        if not (item.startswith("http://") or item.startswith("https://")):
+            return
+
+        # If the user already pasted something, append on a new line
+        current = self.url_textbox.get("1.0", "end-1c").strip()
+        self.url_textbox.delete("1.0", "end")
+        if current:
+            self.url_textbox.insert("1.0", f"{current}\n{item}")
+        else:
+            self.url_textbox.insert("1.0", item)
+
+        # Briefly highlight the textbox so the user sees the drop landed
+        try:
+            self.url_textbox.configure(border_color=self.colors["accent"])
+            self.after(800, lambda: self.url_textbox.configure(
+                border_color=self.colors["border"]
+            ))
+        except Exception:
+            pass
+
+    def _on_dnd_unsupported(self):
+        """Called once at startup if tkinterdnd2 isn't available."""
+        # Silent — the user can still paste with Ctrl+V. Could surface a
+        # one-time toast but the existing paste shortcut covers the case.
+        pass
 
     def _browse_folder(self):
         from tkinter import filedialog

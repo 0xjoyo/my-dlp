@@ -53,6 +53,8 @@ args = [
     "--collect-all=mutagen",
     "--collect-all=pystray",
     "--collect-all=PIL",
+    # Drag-and-drop: collect tkinterdnd2 if installed (graceful no-op otherwise)
+    "--collect-all=tkinterdnd2",
     # Suppress the console window on Windows (we already pass --windowed)
     "--noconsole",
 ]

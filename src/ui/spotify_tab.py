@@ -1,13 +1,48 @@
 """
 Spotify Tab — Search tracks & playlists, view results, and download via yt-dlp
 """
+import io
 import threading
 import tkinter as tk
 import customtkinter as ctk
+import requests
+from PIL import Image
 
 from src.core import spotify_search, downloader
 from src.utils.config_manager import load_config
 from src.utils.i18n import _
+from src.utils import search_history
+
+
+def _map_youtube_to_spotify_shape(youtube_results: list, query: str) -> list:
+    """
+    Convert YouTube Music search results (title/artist/youtube_url/...)
+    into the Spotify-shaped list that _on_search_done expects:
+    [{type, title, artist, url, count}, ...]
+
+    If nothing came back, we expose a single fallback row so the user
+    sees feedback (no empty results card).
+    """
+    mapped = []
+    for r in (youtube_results or []):
+        mapped.append({
+            "type": "track",
+            "title": r.get("title", "Unknown"),
+            "artist": r.get("artist", "Unknown"),
+            "url": r.get("youtube_url", ""),
+            "thumbnail": r.get("thumbnail", ""),
+            "duration": r.get("duration", ""),
+        })
+    if not mapped and query:
+        mapped.append({
+            "type": "track",
+            "title": query,
+            "artist": "Unknown",
+            "url": "",
+            "thumbnail": "",
+            "duration": "",
+        })
+    return mapped
 
 class SpotifyTab(ctk.CTkFrame):
     def __init__(self, parent, colors: dict):
@@ -73,6 +108,12 @@ class SpotifyTab(ctk.CTkFrame):
                                         text_color=self.colors["text_secondary"])
         self.status_lbl.grid(row=2, column=0, sticky="w", padx=24, pady=(0, 16))
 
+        # Search history chips (persistent across launches)
+        self.history_container = ctk.CTkFrame(search_card, fg_color="transparent")
+        self.history_container.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 16))
+        self.history_container.grid_columnconfigure(0, weight=1)
+        self._render_history()
+
         # Results Card
         self.results_card = self._card(scroll, _("sp_card_results"))
         self.results_card.grid(row=1, column=0, padx=36, pady=16, sticky="ew")
@@ -92,6 +133,115 @@ class SpotifyTab(ctk.CTkFrame):
                           text_color=self.colors["accent"]).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 8))
         return frame
 
+    # ── Search history ──────────────────────────────────────────────
+
+    def _render_history(self):
+        """
+        Re-render the "recent searches" chip row. Called at construction
+        time and after every successful search or chip removal.
+        """
+        # Tear down existing children so we can rebuild from scratch
+        for w in self.history_container.winfo_children():
+            w.destroy()
+
+        history = search_history.get_history()
+        # Header row: label + clear button (only when there's history)
+        header_row = ctk.CTkFrame(self.history_container, fg_color="transparent")
+        header_row.grid(row=0, column=0, sticky="ew")
+        header_row.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            header_row,
+            text=_("sp_recent_searches"),
+            font=ctk.CTkFont("Segoe UI", 12, "bold"),
+            text_color=self.colors["text_secondary"],
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w")
+
+        if history:
+            ctk.CTkButton(
+                header_row,
+                text=_("sp_clear_history"),
+                width=110, height=26, corner_radius=8,
+                font=ctk.CTkFont("Segoe UI", 11),
+                fg_color="transparent",
+                hover_color=self.colors["border"],
+                text_color=self.colors["text_secondary"],
+                command=self._on_history_clear,
+            ).grid(row=0, column=1, sticky="e")
+
+        # Chips row
+        if not history:
+            ctk.CTkLabel(
+                self.history_container,
+                text=_("sp_no_history"),
+                font=ctk.CTkFont("Segoe UI", 12),
+                text_color=self.colors["border"],
+                anchor="w",
+            ).grid(row=1, column=0, sticky="ew", pady=(4, 0))
+            return
+
+        chips_row = ctk.CTkFrame(self.history_container, fg_color="transparent")
+        chips_row.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+
+        # Wrap chips across multiple rows
+        col = 0
+        row = 0
+        max_cols = 4
+        for q in history:
+            chip = ctk.CTkButton(
+                chips_row,
+                text=f"🔍 {q}  ✕",
+                height=30, corner_radius=14,
+                font=ctk.CTkFont("Segoe UI", 11),
+                fg_color=self.colors["border"],
+                hover_color=self.colors["accent"],
+                text_color=self.colors["text_primary"],
+                command=lambda q=q: self._on_history_chip_clicked(q),
+            )
+            chip.grid(row=row, column=col, padx=(0, 6), pady=(0, 6), sticky="w")
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+
+    def _on_history_chip_clicked(self, query: str):
+        """Fill the entry with the chip's query and run the search."""
+        try:
+            self.query_entry.delete(0, "end")
+            self.query_entry.insert(0, query)
+            self.query_entry.focus_set()
+        except Exception:
+            pass
+        self._on_search()
+
+    def _on_history_clear(self):
+        search_history.clear_history()
+        self._render_history()
+
+    def _record_search(self, query: str):
+        """Persist a successful search to history and refresh chips."""
+        search_history.add_query(query)
+        self._render_history()
+
+    def _async_set_thumb(self, label: ctk.CTkLabel, url: str, fallback_text: str = "🎵"):
+        """Download a thumbnail in a background thread and set it on the label."""
+        import io
+        from PIL import Image
+
+        def _worker():
+            try:
+                r = requests.get(url, timeout=8)
+                if r.status_code == 200:
+                    img = Image.open(io.BytesIO(r.content)).resize((48, 48), Image.LANCZOS)
+                    cimg = ctk.CTkImage(img, size=(48, 48))
+                    self.after(0, lambda: label.configure(image=cimg, text=""))
+            except Exception:
+                # On failure show the fallback emoji
+                self.after(0, lambda: label.configure(text=fallback_text, font=ctk.CTkFont(size=22)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _on_search(self):
         query = self.query_entry.get().strip()
         if not query:
@@ -109,10 +259,18 @@ class SpotifyTab(ctk.CTkFrame):
         for widget in self.results_frame.winfo_children():
             widget.destroy()
 
+        # Persist this query to search history (capped at 10, dedup'd).
+        self._record_search(query)
+
         def do_search():
             try:
-                res = spotify_search.search_spotify(query)
-                self.after(0, lambda: self._on_search_done(res))
+                spotify_search.search_by_name(
+                    query,
+                    callback=lambda r: self.after(0, lambda: self._on_search_done(
+                        _map_youtube_to_spotify_shape(r, query)
+                    )),
+                    error_callback=lambda e: self.after(0, lambda: self._on_search_error(str(e))),
+                )
             except Exception as e:
                 self.after(0, lambda: self._on_search_error(str(e)))
 
@@ -125,25 +283,42 @@ class SpotifyTab(ctk.CTkFrame):
             return
 
         self.status_lbl.configure(text="")
-        
+
         for i, item in enumerate(results):
             row = ctk.CTkFrame(self.results_frame, fg_color=self.colors["bg_dark"], corner_radius=10)
             row.grid(row=i, column=0, sticky="ew", pady=6)
             row.grid_columnconfigure(1, weight=1)
 
-            # Icon
-            icon = "🎵" if item["type"] == "track" else "📋"
-            ctk.CTkLabel(row, text=icon, font=ctk.CTkFont(size=22)).grid(row=0, column=0, padx=16, pady=12)
+            # Icon column (filled with thumbnail if available, else emoji)
+            icon_holder = ctk.CTkLabel(row, text="", width=48, height=48)
+            icon_holder.grid(row=0, column=0, padx=(12, 8), pady=8)
+
+            thumb_url = item.get("thumbnail", "")
+            if thumb_url:
+                self._async_set_thumb(icon_holder, thumb_url,
+                                       fallback_text="🎵" if item["type"] == "track" else "📋")
+            else:
+                icon_holder.configure(
+                    text="🎵" if item["type"] == "track" else "📋",
+                    font=ctk.CTkFont(size=22),
+                )
 
             # Info
             info_frame = ctk.CTkFrame(row, fg_color="transparent")
             info_frame.grid(row=0, column=1, sticky="w")
-            
+
             title = f"{item['title']} - {item['artist']}" if item["type"] == "track" else item['title']
             ctk.CTkLabel(info_frame, text=title, font=ctk.CTkFont("Segoe UI", 14, "bold"),
                          text_color=self.colors["text_primary"]).pack(anchor="w")
-            
-            meta = f"Spotify URL" if item["type"] == "track" else _("lbl_tracks_count", count=item['count'])
+
+            meta_parts = []
+            if item.get("duration"):
+                meta_parts.append(f"⏱ {item['duration']}")
+            if item["type"] == "track":
+                meta_parts.append("YouTube Music")
+            else:
+                meta_parts.append(_("lbl_tracks_count", count=item.get('count', 0)))
+            meta = "  •  ".join(meta_parts) if meta_parts else "Spotify URL"
             ctk.CTkLabel(info_frame, text=meta, font=ctk.CTkFont("Segoe UI", 12),
                          text_color=self.colors["text_secondary"]).pack(anchor="w")
 
