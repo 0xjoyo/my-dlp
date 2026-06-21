@@ -25,13 +25,28 @@ class DownloadTask:
         self.cancelled = False
 
 
-def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
+def _is_playlist_url(url: str) -> bool:
+    """Detect playlist URLs for common sites (YouTube, Spotify, SoundCloud)."""
+    if not url:
+        return False
+    u = url.lower()
+    if "playlist" in u or "list=" in u:
+        return True
+    if "/album/" in u:
+        return True
+    if "soundcloud.com" in u and "/sets/" in u:
+        return True
+    return False
+
+
+def _build_ydl_opts(task: DownloadTask, config: dict, is_playlist: bool = False) -> dict:
     """Build yt-dlp options based on task parameters."""
     ffmpeg_path = config.get("ffmpeg_path", "")
 
-    outtmpl = os.path.join(task.output_dir, "%(playlist_index)s - %(title)s.%(ext)s"
-                           if "playlist" in task.url.lower() or "album" in task.url.lower()
-                           else "%(title)s.%(ext)s")
+    outtmpl = os.path.join(
+        task.output_dir,
+        "%(playlist_index)s - %(title)s.%(ext)s" if is_playlist else "%(title)s.%(ext)s"
+    )
 
     opts = {
         "outtmpl": outtmpl,
@@ -134,7 +149,8 @@ def download(task: DownloadTask):
     def _run():
         try:
             config = load_config()
-            opts = _build_ydl_opts(task, config)
+            is_playlist = _is_playlist_url(task.url)
+            opts = _build_ydl_opts(task, config, is_playlist=is_playlist)
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(task.url, download=True)
                 

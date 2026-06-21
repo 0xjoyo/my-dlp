@@ -213,7 +213,7 @@ class SettingsTab(ctk.CTkFrame):
                                 ).grid(row=4, column=0, sticky="w", padx=24, pady=(0, 24))
 
         # ── Maintenance ───────────────────────────────────────────────
-        maint_card = self._card(scroll, _("card_maintenance") if _("card_maintenance") != "card_maintenance" else "Maintenance")
+        maint_card = self._card(scroll, _("card_maintenance"))
         maint_card.grid(row=4, column=0, padx=36, pady=16, sticky="ew")
 
         update_row = ctk.CTkFrame(maint_card, fg_color="transparent")

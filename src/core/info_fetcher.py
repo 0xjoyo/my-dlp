@@ -34,18 +34,21 @@ def fetch_info(url: str, callback: Callable, error_callback: Callable = None):
 
             if is_playlist:
                 entries = info.get("entries", [])
+                # Pick the best thumbnail: playlist thumb first, then first
+                # entry's thumb that actually resolves, else empty string.
+                playlist_thumb = info.get("thumbnail", "") or ""
                 result = {
                     "type": "playlist",
                     "title": info.get("title", "Playlist"),
                     "uploader": info.get("uploader", info.get("channel", "Unknown")),
                     "count": len([e for e in entries if e]),
-                    "thumbnail": info.get("thumbnail") or (entries[0].get("thumbnail") if entries else None),
+                    "thumbnail": playlist_thumb,
                     "entries": [
                         {
                             "title": e.get("title", "Unknown"),
                             "duration": format_duration(e.get("duration", 0)),
                             "url": e.get("url") or e.get("webpage_url", ""),
-                            "thumbnail": e.get("thumbnail", ""),
+                            "thumbnail": e.get("thumbnails", [{}])[-1].get("url", "") if e.get("thumbnails") else "",
                         }
                         for e in entries if e
                     ],
