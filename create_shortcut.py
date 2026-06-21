@@ -101,10 +101,21 @@ def create_desktop_file(exe: str, shortcut_path: str, icon: str | None = None) -
 
 def main():
     exe = _exe_path()
+    exe_dir = os.path.dirname(exe)
     desktop = _desktop_dir()
-    icon_candidate = os.path.join(os.path.dirname(exe), "assets", "icon.ico")
-    icon = icon_candidate if os.path.isfile(icon_candidate) else None
 
+    # Find the icon file. PyInstaller puts bundled data under
+    # _internal/assets/, while dev mode has assets/ next to the
+    # project root (one level up from dist/my-dlp/).
+    icon_candidates = [
+        os.path.join(exe_dir, "_internal", "assets", "icon.ico"),
+        os.path.join(exe_dir, "assets", "icon.ico"),
+    ]
+    icon = next((c for c in icon_candidates if os.path.isfile(c)), None)
+
+    # For Windows: if we found an .ico file, use it; otherwise
+    # pass None to let the shortcut use the EXE's embedded icon
+    # (PyInstaller embeds it via --icon=assets/icon.ico).
     if sys.platform == "win32":
         shortcut = os.path.join(desktop, f"{APP_NAME}.lnk")
         if create_windows_shortcut(exe, shortcut, icon=icon):
@@ -113,8 +124,16 @@ def main():
             print(f"ERR Could not create shortcut at {shortcut}")
             sys.exit(1)
     else:
+        # On Linux/macOS the .desktop file needs a real icon file.
+        # If the .ico wasn't found, try the .png fallback.
+        png_candidates = [
+            os.path.join(exe_dir, "_internal", "assets", "icon.png"),
+            os.path.join(exe_dir, "assets", "icon.png"),
+        ]
+        png = next((c for c in png_candidates if os.path.isfile(c)), None)
+        desktop_icon = png or icon  # prefer png for Linux/macOS
         shortcut = os.path.join(desktop, f"{APP_NAME}.desktop")
-        if create_desktop_file(exe, shortcut, icon=icon):
+        if create_desktop_file(exe, shortcut, icon=desktop_icon):
             print(f"OK  Created: {shortcut}")
         else:
             print(f"ERR Could not create .desktop file at {shortcut}")
