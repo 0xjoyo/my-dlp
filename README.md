@@ -54,7 +54,6 @@
 |----------------|----------------|----------------|
 | ![Downloader](docs/screenshot-downloader.png) | ![Spotify](docs/screenshot-spotify.png) | ![Lyrics](docs/screenshot-lyrics.png) |
 
-> Screenshots will be added in a follow-up. Run the app to see the dark, glassmorphism-inspired UI in action.
 
 ---
 
