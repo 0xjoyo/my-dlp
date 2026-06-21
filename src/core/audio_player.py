@@ -1,6 +1,7 @@
 """
 Audio Player — VLC-based audio player for karaoke sync
 """
+import sys
 import threading
 from typing import Callable, Optional
 
@@ -23,10 +24,21 @@ class AudioPlayer:
         self._try_init_vlc()
 
     def _try_init_vlc(self):
-        """Try to initialize VLC. Sets _available flag."""
+        """Try to initialize VLC. Sets _available flag.
+
+        On Linux, headless servers (no DISPLAY) still need libvlc to load
+        even though there's no display — the AudioPlayer does not open a
+        video window, only an audio stream. We don't pass --no-xlib on
+        non-Windows because that flag is X11-only and confuses the macOS
+        VLC bindings.
+        """
         try:
             import vlc
-            self._instance = vlc.Instance("--no-xlib", "--quiet")
+            if sys.platform.startswith("win"):
+                instance_args = ["--no-xlib", "--quiet"]
+            else:
+                instance_args = ["--quiet"]
+            self._instance = vlc.Instance(*instance_args)
             self._player = self._instance.media_player_new()
             self._available = True
         except (ImportError, Exception):

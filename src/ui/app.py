@@ -1,31 +1,60 @@
 """
 Main Application Window — CustomTkinter with sidebar navigation (Modern & i18n)
+
+v1.2.0 additions:
+- Auto update-check on startup (GitHub Releases API), shows a bilingual
+  dialog when a newer version is found. The dialog can be dismissed
+  ("Later") or "skipped" (won't reappear for this version).
+- A small red dot in the sidebar replaces the full pop-up on subsequent
+  launches when the user has dismissed the dialog ("Later"). Clicking
+  the dot re-opens the pop-up.
+- Closing the main window hides the app to the system tray instead of
+  quitting. Tray menu lets the user re-show the window, check for
+  updates manually, or fully quit.
 """
+import os
+import threading
+import webbrowser
+import tkinter as tk
 import customtkinter as ctk
+
 from src.ui.downloader_tab import DownloaderTab
 from src.ui.spotify_tab import SpotifyTab
 from src.ui.lyrics_tab import LyricsTab
 from src.ui.history_tab import HistoryTab
 from src.ui.converter_tab import ConverterTab
 from src.ui.settings_tab import SettingsTab
+from src.ui.update_dialog import UpdateDialog
 from src.utils.config_manager import load_config
 from src.utils.i18n import _
+from src.core import updater
+
+# Optional system-tray support
+try:
+    import pystray
+    from PIL import Image as _PILImage
+    _HAS_PYSTRAY = True
+except Exception:
+    _HAS_PYSTRAY = False
+
 
 # Modern Color palette
 COLORS = {
-    "bg_dark":       "#09090B", # Zinc 950
-    "sidebar_bg":    "#18181B", # Zinc 900
-    "card_bg":       "#121214", 
-    "accent":        "#8B5CF6", # Vibrant Violet
+    "bg_dark":       "#09090B",  # Zinc 950
+    "sidebar_bg":    "#18181B",  # Zinc 900
+    "card_bg":       "#121214",
+    "accent":        "#8B5CF6",  # Vibrant Violet
     "accent_hover":  "#A78BFA",
-    "accent2":       "#38BDF8", # Sky blue
+    "accent2":       "#38BDF8",  # Sky blue
     "success":       "#22C55E",
     "warning":       "#F59E0B",
     "error":         "#EF4444",
     "text_primary":  "#FAFAFA",
-    "text_secondary":"#A1A1AA", # Zinc 400
-    "border":        "#27272A", # Zinc 800
+    "text_secondary":"#A1A1AA",  # Zinc 400
+    "border":        "#27272A",  # Zinc 800
+    "dot_red":       "#EF4444",
 }
+
 
 class MyDLPApp(ctk.CTk):
     def __init__(self):
@@ -40,15 +69,36 @@ class MyDLPApp(ctk.CTk):
         self.minsize(900, 600)
         self.configure(fg_color=COLORS["bg_dark"])
 
-        # Set window icon if available
+        # Set window icon if available. On Linux, tkinter doesn't read
+        # .ico — PhotoImage works with .png/.gif, so try the PNG first
+        # then fall back to the ico (Windows).
         try:
-            self.iconbitmap("assets/icon.ico")
+            if os.path.exists("assets/icon.png"):
+                icon_img = tk.PhotoImage(file="assets/icon.png")
+                self.iconphoto(True, icon_img)
+            elif os.path.exists("assets/icon.ico"):
+                self.iconbitmap("assets/icon.ico")
         except Exception:
             pass
+
+        # ── Update + tray state ──────────────────────────────────────
+        self._update_info = None           # latest release dict from updater
+        self._update_dialog_open = False   # guard against multiple dialogs
+        self._update_badge = None          # sidebar dot widget
+        self._tray_icon = None             # pystray.Icon instance
+        self._is_quitting = False          # True only when user picks Quit
+        self.protocol("WM_DELETE_WINDOW", self._on_close_requested)
 
         self._build_ui()
         self._select_tab(0)
         self._bind_shortcuts()
+
+        # Check for updates after the UI is up (don't block startup)
+        self.after(1500, self._check_for_updates_silent)
+        # Set up the system tray (also non-blocking)
+        self.after(200, self._init_tray)
+
+    # ── UI construction ──────────────────────────────────────────────
 
     def _build_ui(self):
         """Build sidebar + main content area."""
@@ -104,6 +154,20 @@ class MyDLPApp(ctk.CTk):
             btn.grid(row=2 + idx, column=0, padx=16, pady=4, sticky="ew")
             self._nav_buttons.append(btn)
 
+        # Update badge (a small red dot, hidden by default). Sits at the
+        # bottom of the sidebar. Clicking it re-opens the update dialog.
+        self._update_badge = ctk.CTkButton(
+            self.sidebar,
+            text="● " + _("upd_badge_tooltip"),
+            height=36, corner_radius=18,
+            fg_color=COLORS["dot_red"],
+            hover_color="#DC2626",
+            text_color="#FFFFFF",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            command=self._on_update_badge_clicked,
+        )
+        # grid managed by _set_update_badge_visible()
+
         # Version label at bottom
         ver_label = ctk.CTkLabel(self.sidebar, text=_("version_info"),
                                   font=ctk.CTkFont(size=11),
@@ -143,6 +207,8 @@ class MyDLPApp(ctk.CTk):
             self.bind(f"<Control-Key-{i+1}>", lambda e, idx=i: self._select_tab(idx))
         # Ctrl+V = Paste into downloader textbox and fetch
         self.bind("<Control-v>", lambda e: self._quick_paste())
+        # Ctrl+U = Check for updates manually
+        self.bind("<Control-u>", lambda e: self._check_for_updates_silent(force=True))
 
     def _quick_paste(self):
         """Quick paste: go to downloader and paste clipboard."""
@@ -165,7 +231,7 @@ class MyDLPApp(ctk.CTk):
         for i, tab in enumerate(self._tabs):
             if i == index:
                 tab.tkraise()
-            
+
             btn = self._nav_buttons[i]
             if i == index:
                 btn.configure(fg_color=COLORS["accent"], text_color=COLORS["text_primary"])
@@ -177,11 +243,211 @@ class MyDLPApp(ctk.CTk):
         config = load_config()
         mode = config.get("appearance_mode", "dark")
         ctk.set_appearance_mode(mode)
-        
-        # Rebuild UI to apply language changes instantly
-        self.sidebar.destroy()
-        self.content.destroy()
-        
+
+        # Tear down old UI carefully so background threads and child widgets
+        # (notably VLC bindings inside LyricsTab) are released before we
+        # rebuild. Otherwise repeated language toggles can leak resources.
+        self._destroy_tabs()
+        try:
+            self.sidebar.destroy()
+        except Exception:
+            pass
+        try:
+            self.content.destroy()
+        except Exception:
+            pass
+        self._tabs = None
+        self._nav_buttons = None
+        self._update_badge = None
+
         self.title(_("app_name"))
         self._build_ui()
-        self._select_tab(5) # Stay on the Settings tab (now index 5)
+        self._select_tab(5)  # Stay on the Settings tab (now index 5)
+
+    def _destroy_tabs(self):
+        """Best-effort cleanup of tab instances before rebuilding the UI."""
+        if not getattr(self, "_tabs", None):
+            return
+        for tab in self._tabs:
+            try:
+                # LyricsTab holds an AudioPlayer that wraps a VLC instance;
+                # release it explicitly to free the libvlc handle.
+                player = getattr(tab, "player", None)
+                if player is not None and hasattr(player, "cleanup"):
+                    try:
+                        player.cleanup()
+                    except Exception:
+                        pass
+                tab.destroy()
+            except Exception:
+                pass
+
+    # ── Update flow ──────────────────────────────────────────────────
+
+    def _check_for_updates_silent(self, force: bool = False):
+        """
+        Run an update check in the background. If an update is found AND
+        the user has not dismissed this version, show the pop-up. Otherwise
+        just set the badge state.
+
+        `force=True` is used by the manual "Check for updates" menu item
+        and re-shows the dialog even if the version was previously dismissed.
+        """
+        def _on_result(info):
+            # Marshal back to the UI thread
+            self.after(0, lambda: self._on_update_check_done(info, force=force))
+
+        def _on_error():
+            # Network failure: silent. The manual check shows a small status.
+            pass
+
+        updater.check_for_update(callback=_on_result, error_callback=_on_error)
+
+    def _on_update_check_done(self, info, force: bool = False):
+        if not info or not info.get("is_update_available"):
+            return
+
+        self._update_info = info
+        latest = info.get("latest_version", "")
+        dismissed = updater.get_dismissed_version() or ""
+
+        # Show the pop-up only if the user hasn't skipped this exact version
+        # (or if the check was forced via the menu/shortcut).
+        if force or latest != dismissed:
+            self._show_update_dialog()
+        else:
+            # Just light up the badge
+            self._set_update_badge_visible(True)
+
+    def _show_update_dialog(self):
+        if self._update_dialog_open or not self._update_info:
+            return
+        self._update_dialog_open = True
+        try:
+            dlg = UpdateDialog(self, self._update_info, COLORS)
+            # After the dialog closes, the result decides what to do
+            self.wait_window(dlg)
+            result = dlg.result
+        finally:
+            self._update_dialog_open = False
+
+        if result == "update":
+            # User chose to update — open the release page in the browser.
+            # The browser handles the actual install (Inno Setup runs the
+            # installer; the portable zip is extracted over the existing
+            # install). The running app is left running; the new version
+            # takes effect on next launch.
+            url = self._update_info.get("html_url", "")
+            if url:
+                threading.Thread(target=webbrowser.open, args=(url,), daemon=True).start()
+                updater.clear_dismissed_version()
+                self._set_update_badge_visible(False)
+        elif result == "skip":
+            updater.set_dismissed_version(self._update_info.get("latest_version", ""))
+            self._set_update_badge_visible(False)
+        else:
+            # "later" — leave the badge visible so the user can re-open it
+            self._set_update_badge_visible(True)
+
+    def _on_update_badge_clicked(self):
+        # Re-fetch latest info and force the dialog open
+        self._check_for_updates_silent(force=True)
+
+    def _set_update_badge_visible(self, visible: bool):
+        if not getattr(self, "_update_badge", None):
+            return
+        if visible:
+            try:
+                self._update_badge.configure(text="● " + _("upd_badge_tooltip"))
+            except Exception:
+                pass
+            self._update_badge.grid(row=9, column=0, padx=16, pady=(4, 4), sticky="ew")
+        else:
+            self._update_badge.grid_forget()
+
+    # ── System tray ──────────────────────────────────────────────────
+
+    def _init_tray(self):
+        """Create the system-tray icon (if pystray is available)."""
+        if not _HAS_PYSTRAY:
+            return
+
+        # Try to build a 64x64 icon from assets/icon.ico, falling back to a
+        # solid-colour generated image if the file isn't accessible.
+        try:
+            icon_img = _PILImage.open("assets/icon.ico").convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
+        except Exception:
+            icon_img = _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
+
+        menu = pystray.Menu(
+            pystray.MenuItem(_("tray_show"), self._tray_show, default=True),
+            pystray.MenuItem(_("tray_hide"), self._tray_hide),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(_("tray_check_update"), lambda: self._check_for_updates_silent(force=True)),
+            pystray.MenuItem(_("nav_settings"), lambda: self._select_tab(5)),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(_("tray_quit"), self._tray_quit),
+        )
+
+        def _setup(icon):
+            icon.icon = icon_img
+            icon.title = _("tray_running_in")
+
+        self._tray_icon = pystray.Icon("my-dlp", icon=icon_img, title=_("tray_running_in"), menu=menu)
+        # Run tray on its own daemon thread so it doesn't block tkinter
+        threading.Thread(target=self._tray_icon.run, kwargs={"setup": _setup}, daemon=True).start()
+
+    def _tray_show(self, icon=None, item=None):
+        self.after(0, self._show_from_tray)
+
+    def _show_from_tray(self):
+        try:
+            self.deiconify()
+        except Exception:
+            pass
+        try:
+            self.lift()
+        except Exception:
+            pass
+        try:
+            self.focus_force()
+        except Exception:
+            pass
+
+    def _tray_hide(self, icon=None, item=None):
+        self.after(0, self._hide_to_tray)
+
+    def _hide_to_tray(self):
+        try:
+            self.withdraw()
+        except Exception:
+            pass
+
+    def _tray_quit(self, icon=None, item=None):
+        self.after(0, self._quit_app)
+
+    def _on_close_requested(self):
+        """Window close button -> hide to tray (not quit)."""
+        if self._is_quitting:
+            return
+        # If we have a tray icon, hide. Otherwise really quit.
+        if self._tray_icon is not None:
+            self._hide_to_tray()
+        else:
+            self._quit_app()
+
+    def _quit_app(self):
+        """Fully tear down the app — stop tray, destroy widgets, exit."""
+        self._is_quitting = True
+        if self._tray_icon is not None:
+            try:
+                self._tray_icon.stop()
+            except Exception:
+                pass
+        try:
+            self.destroy()
+        except Exception:
+            pass
+        # Exit the process — pystray and tkinter both need this to fully release.
+        import sys
+        sys.exit(0)

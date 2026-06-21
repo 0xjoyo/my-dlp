@@ -149,6 +149,27 @@ TRANSLATIONS = {
     
     # ── Drag & Drop ──
     "drag_drop_hint": {"ar": "🖱️ اسحب الروابط هنا مباشرة", "en": "🖱️ Drag & drop links here"},
+
+    # ── Update Dialog (v1.2.0) ──
+    "upd_dialog_title": {"ar": "تحديث جديد متاح", "en": "Update Available"},
+    "upd_title":         {"ar": "🎉 يوجد إصدار جديد من my-dlp", "en": "A new my-dlp version is available"},
+    "upd_subtitle":      {"ar": "الإصدار الحالي: {current}  •  الإصدار الجديد: {latest}",
+                          "en": "Current version: {current}  •  Latest version: {latest}"},
+    "upd_release_label": {"ar": "الإصدار:", "en": "Release:"},
+    "upd_no_notes":      {"ar": "لا توجد ملاحظات لهذا الإصدار.", "en": "No release notes for this version."},
+    "upd_btn_update":    {"ar": "⬇  تحديث الآن", "en": "⬇  Update Now"},
+    "upd_btn_later":     {"ar": "⏰ لاحقاً", "en": "⏰ Later"},
+    "upd_btn_skip":      {"ar": "🚫 تجاهل هذا الإصدار", "en": "🚫 Skip this version"},
+
+    # ── Sidebar update badge ──
+    "upd_badge_tooltip": {"ar": "يوجد تحديث جديد", "en": "Update available"},
+
+    # ── System tray ──
+    "tray_show":        {"ar": "إظهار النافذة", "en": "Show Window"},
+    "tray_hide":        {"ar": "إخفاء النافذة", "en": "Hide Window"},
+    "tray_check_update":{"ar": "🔄 التحقق من التحديثات", "en": "🔄 Check for Updates"},
+    "tray_quit":        {"ar": "❌ إغلاق البرنامج", "en": "❌ Quit my-dlp"},
+    "tray_running_in":  {"ar": "my-dlp يعمل في الخلفية", "en": "my-dlp is running in the background"},
 }
 
 def get_text(key: str, **kwargs) -> str:

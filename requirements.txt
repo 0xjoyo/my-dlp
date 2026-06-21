@@ -8,3 +8,6 @@ python-Levenshtein>=0.21.0
 requests>=2.31.0
 syncedlyrics>=0.4.0
 python-vlc>=3.0.18121
+mutagen>=1.47.0
+pystray>=0.19.5
+packaging>=23.0
