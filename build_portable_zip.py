@@ -15,6 +15,13 @@ EXCLUDE_SUBSTRINGS = ("history.json", "config.json")
 
 added = 0
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+    # Add create_shortcut.py at the zip root (next to my-dlp.exe)
+    sc_path = "create_shortcut.py"
+    if os.path.isfile(sc_path):
+        zf.write(sc_path, sc_path)
+        added += 1
+        print(f"  + {sc_path}")
+
     for root, dirs, files in os.walk(src_dir):
         # Skip noisy directories
         dirs[:] = [d for d in dirs if d not in ("__pycache__",)]
