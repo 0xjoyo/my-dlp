@@ -2,11 +2,14 @@
 Settings Tab — Application configuration and preferences (i18n & Modern UI)
 """
 import os
+import subprocess
+import threading
 import customtkinter as ctk
 from tkinter import filedialog
 
 from src.utils.config_manager import load_config, save_config
 from src.utils.i18n import _
+
 
 class SettingsTab(ctk.CTkFrame):
     def __init__(self, parent, colors: dict, refresh_callback=None):
@@ -113,7 +116,27 @@ class SettingsTab(ctk.CTkFrame):
                          font=ctk.CTkFont("Segoe UI", 13),
                          text_color=self.colors["text_primary"],
                          fg_color=self.colors["accent"]
-                         ).grid(row=10, column=0, sticky="w", padx=24, pady=(0, 24))
+                         ).grid(row=10, column=0, sticky="w", padx=24, pady=(0, 16))
+
+        # Speed limit
+        self._setting_row(dl_card, 11, _("set_speed_limit"))
+        speed_row = ctk.CTkFrame(dl_card, fg_color="transparent")
+        speed_row.grid(row=12, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 24))
+
+        self.speed_limit_var = ctk.StringVar(
+            value=str(self._config.get("speed_limit", 0))
+        )
+        ctk.CTkEntry(speed_row, textvariable=self.speed_limit_var,
+                     placeholder_text="0",
+                     width=140, height=42, corner_radius=10,
+                     font=ctk.CTkFont("Segoe UI", 13),
+                     fg_color=self.colors["bg_dark"],
+                     border_color=self.colors["border"],
+                     text_color=self.colors["text_primary"]).pack(side="left")
+
+        ctk.CTkLabel(speed_row, text="KB/s  (0 = unlimited)",
+                     font=ctk.CTkFont("Segoe UI", 12),
+                     text_color=self.colors["text_secondary"]).pack(side="left", padx=(10, 0))
 
         # ── Spotify Settings ──────────────────────────────────────────
         sp_card = self._card(scroll, _("card_sp_set"))
@@ -164,10 +187,12 @@ class SettingsTab(ctk.CTkFrame):
 
         self._setting_row(app_card, 1, _("set_lang"))
         self.lang_var = ctk.StringVar(value="ar" if self._config.get("language", "ar") == "ar" else "en")
-        
+
         def _set_lang_var(choice):
-            if choice == _("lang_ar"): self.lang_var.set("ar")
-            else: self.lang_var.set("en")
+            if choice == _("lang_ar"):
+                self.lang_var.set("ar")
+            else:
+                self.lang_var.set("en")
 
         curr_lang_text = _("lang_ar") if self.lang_var.get() == "ar" else _("lang_en")
         lang_menu = ctk.CTkOptionMenu(app_card, values=[_("lang_ar"), _("lang_en")],
@@ -187,9 +212,32 @@ class SettingsTab(ctk.CTkFrame):
                                 selected_color=self.colors["accent"],
                                 ).grid(row=4, column=0, sticky="w", padx=24, pady=(0, 24))
 
+        # ── Maintenance ───────────────────────────────────────────────
+        maint_card = self._card(scroll, _("card_maintenance") if _("card_maintenance") != "card_maintenance" else "Maintenance")
+        maint_card.grid(row=4, column=0, padx=36, pady=16, sticky="ew")
+
+        update_row = ctk.CTkFrame(maint_card, fg_color="transparent")
+        update_row.grid(row=1, column=0, sticky="ew", padx=24, pady=(16, 24))
+
+        self.update_btn = ctk.CTkButton(
+            update_row, text=_("btn_update_ytdlp"),
+            width=200, height=42, corner_radius=10,
+            font=ctk.CTkFont("Segoe UI", 13, "bold"),
+            fg_color=self.colors["accent"], hover_color=self.colors["accent_hover"],
+            command=self._update_ytdlp,
+        )
+        self.update_btn.pack(side="left")
+
+        self.update_status = ctk.CTkLabel(
+            update_row, text="",
+            font=ctk.CTkFont("Segoe UI", 13),
+            text_color=self.colors["text_secondary"],
+        )
+        self.update_status.pack(side="left", padx=20)
+
         # ── Save button ───────────────────────────────────────────────
         save_row = ctk.CTkFrame(scroll, fg_color="transparent")
-        save_row.grid(row=4, column=0, padx=36, pady=(16, 40), sticky="ew")
+        save_row.grid(row=5, column=0, padx=36, pady=(16, 40), sticky="ew")
 
         self.save_btn = ctk.CTkButton(
             save_row, text=_("btn_save"), height=54, corner_radius=14,
@@ -203,6 +251,8 @@ class SettingsTab(ctk.CTkFrame):
                                          font=ctk.CTkFont("Segoe UI", 13),
                                          text_color=self.colors["text_secondary"])
         self.save_status.pack(side="left", padx=20)
+
+    # ── helpers ────────────────────────────────────────────────────────
 
     def _setting_row(self, parent, row: int, label: str):
         ctk.CTkLabel(parent, text=label,
@@ -223,6 +273,42 @@ class SettingsTab(ctk.CTkFrame):
         if path:
             self.ffmpeg_var.set(path)
 
+    # ── yt-dlp auto-updater ───────────────────────────────────────────
+
+    def _update_ytdlp(self):
+        """Run `pip install -U yt-dlp` in a background thread."""
+        self.update_btn.configure(state="disabled")
+        self.update_status.configure(
+            text=_("msg_updating"), text_color=self.colors["text_secondary"]
+        )
+
+        def _run():
+            try:
+                subprocess.run(
+                    ["pip", "install", "-U", "yt-dlp"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                self.after(0, self._on_update_done, True)
+            except Exception:
+                self.after(0, self._on_update_done, False)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_update_done(self, success: bool):
+        self.update_btn.configure(state="normal")
+        if success:
+            self.update_status.configure(
+                text=_("msg_update_done"), text_color=self.colors["success"]
+            )
+        else:
+            self.update_status.configure(
+                text=_("msg_update_err"), text_color=self.colors["error"]
+            )
+
+    # ── save ──────────────────────────────────────────────────────────
+
     def _save(self):
         config = load_config()
         config["download_path"] = self.dl_path_var.get().strip()
@@ -236,6 +322,12 @@ class SettingsTab(ctk.CTkFrame):
         config["lyrics_provider"] = self.lyrics_prov_var.get()
         config["appearance_mode"] = self.appearance_var.get()
         config["language"] = self.lang_var.get()
+
+        # Speed limit — store as int, fall back to 0 on invalid input
+        try:
+            config["speed_limit"] = int(self.speed_limit_var.get().strip())
+        except (ValueError, AttributeError):
+            config["speed_limit"] = 0
 
         if save_config(config):
             self.save_status.configure(text=_("msg_saved"), text_color=self.colors["success"])

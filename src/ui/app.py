@@ -5,6 +5,8 @@ import customtkinter as ctk
 from src.ui.downloader_tab import DownloaderTab
 from src.ui.spotify_tab import SpotifyTab
 from src.ui.lyrics_tab import LyricsTab
+from src.ui.history_tab import HistoryTab
+from src.ui.converter_tab import ConverterTab
 from src.ui.settings_tab import SettingsTab
 from src.utils.config_manager import load_config
 from src.utils.i18n import _
@@ -46,6 +48,7 @@ class MyDLPApp(ctk.CTk):
 
         self._build_ui()
         self._select_tab(0)
+        self._bind_shortcuts()
 
     def _build_ui(self):
         """Build sidebar + main content area."""
@@ -81,7 +84,9 @@ class MyDLPApp(ctk.CTk):
             (_("nav_downloader"), 0, "downloader"),
             (_("nav_spotify"),    1, "spotify"),
             (_("nav_lyrics"),     2, "lyrics"),
-            (_("nav_settings"),   3, "settings"),
+            (_("nav_converter"),  3, "converter"),
+            (_("nav_history"),    4, "history"),
+            (_("nav_settings"),   5, "settings"),
         ]
 
         self._nav_buttons = []
@@ -105,6 +110,12 @@ class MyDLPApp(ctk.CTk):
                                   text_color=COLORS["text_secondary"])
         ver_label.grid(row=10, column=0, padx=20, pady=24, sticky="sw")
 
+        # Shortcuts hint
+        shortcuts_label = ctk.CTkLabel(self.sidebar, text="Ctrl+D Download  •  Ctrl+1-6 Tabs",
+                                       font=ctk.CTkFont(size=10),
+                                       text_color=COLORS["border"])
+        shortcuts_label.grid(row=11, column=0, padx=20, pady=(0, 16), sticky="sw")
+
         # ── Content area ─────────────────────────────────────────────
         self.content = ctk.CTkFrame(self, fg_color=COLORS["bg_dark"], corner_radius=0)
         self.content.grid(row=0, column=1, sticky="nsew")
@@ -116,10 +127,38 @@ class MyDLPApp(ctk.CTk):
             DownloaderTab(self.content, colors=COLORS),
             SpotifyTab(self.content, colors=COLORS),
             LyricsTab(self.content, colors=COLORS),
+            ConverterTab(self.content, colors=COLORS),
+            HistoryTab(self.content, colors=COLORS),
             SettingsTab(self.content, colors=COLORS, refresh_callback=self._on_settings_saved),
         ]
         for tab in self._tabs:
             tab.grid(row=0, column=0, sticky="nsew")
+
+    def _bind_shortcuts(self):
+        """Bind keyboard shortcuts."""
+        # Ctrl+D = Go to Download tab
+        self.bind("<Control-d>", lambda e: self._select_tab(0))
+        # Ctrl+1-6 = Switch tabs
+        for i in range(6):
+            self.bind(f"<Control-Key-{i+1}>", lambda e, idx=i: self._select_tab(idx))
+        # Ctrl+V = Paste into downloader textbox and fetch
+        self.bind("<Control-v>", lambda e: self._quick_paste())
+
+    def _quick_paste(self):
+        """Quick paste: go to downloader and paste clipboard."""
+        self._select_tab(0)
+        dl_tab = self._tabs[0]
+        try:
+            text = self.clipboard_get()
+            if text and ("http" in text or "www." in text):
+                current = dl_tab.url_textbox.get("1.0", "end-1c").strip()
+                dl_tab.url_textbox.delete("1.0", "end")
+                if current:
+                    dl_tab.url_textbox.insert("1.0", f"{current}\n{text.strip()}")
+                else:
+                    dl_tab.url_textbox.insert("1.0", text.strip())
+        except Exception:
+            pass
 
     def _select_tab(self, index: int):
         """Show the selected tab and update sidebar nav."""
@@ -145,4 +184,4 @@ class MyDLPApp(ctk.CTk):
         
         self.title(_("app_name"))
         self._build_ui()
-        self._select_tab(3) # Stay on the Settings tab
+        self._select_tab(5) # Stay on the Settings tab (now index 5)

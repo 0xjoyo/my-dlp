@@ -11,8 +11,30 @@ TRANSLATIONS = {
     "nav_downloader": {"ar": "⬇  التنزيل", "en": "⬇  Downloader"},
     "nav_spotify": {"ar": "🎵  بحث Spotify", "en": "🎵  Spotify Search"},
     "nav_lyrics": {"ar": "🎤  الكلمات المتزامنة", "en": "🎤  Synced Lyrics"},
+    "nav_history": {"ar": "🕒  سجل التحميلات", "en": "🕒  Download History"},
     "nav_settings": {"ar": "⚙  الإعدادات", "en": "⚙  Settings"},
     "version_info": {"ar": "v1.0.0  •  مدعوم بـ yt-dlp", "en": "v1.0.0  •  Powered by yt-dlp"},
+    
+    # ── History Tab ──
+    "hist_subtitle": {"ar": "سجل بكل الملفات اللي تم تنزيلها", "en": "Log of all downloaded files"},
+    "btn_clear_hist": {"ar": "🗑 مسح السجل", "en": "🗑 Clear History"},
+    "hist_empty": {"ar": "السجل فارغ حالياً.", "en": "History is currently empty."},
+    "btn_open_folder": {"ar": "📁 فتح المجلد", "en": "📁 Open Folder"},
+
+    # ── Downloader / Batch / Tag Editor ──
+    "dl_batch_hint": {"ar": "يمكنك لصق أكثر من رابط (كل رابط في سطر)", "en": "You can paste multiple links (one per line)"},
+    "lbl_tag_title": {"ar": "اسم الأغنية:", "en": "Title:"},
+    "lbl_tag_artist": {"ar": "الفنان:", "en": "Artist:"},
+    
+    # ── Settings / Updater ──
+    "btn_update_ytdlp": {"ar": "🔄 تحديث yt-dlp", "en": "🔄 Update yt-dlp"},
+    "msg_updating": {"ar": "⏳ جاري التحديث...", "en": "⏳ Updating..."},
+    "msg_update_done": {"ar": "✅ تم التحديث بنجاح!", "en": "✅ Update complete!"},
+    "msg_update_err": {"ar": "❌ فشل التحديث", "en": "❌ Update failed"},
+    
+    # ── Mini Player ──
+    "btn_mini_player": {"ar": "🗔 المشغل المصغر", "en": "🗔 Mini Player"},
+    "btn_close_mini": {"ar": "❌ إغلاق", "en": "❌ Close"},
 
     # ── Downloader Tab ──
     "dl_title": {"ar": "⬇  التنزيل", "en": "⬇  Downloader"},
@@ -102,6 +124,31 @@ TRANSLATIONS = {
     "btn_save": {"ar": "💾  حفظ الإعدادات", "en": "💾  Save Settings"},
     "msg_saved": {"ar": "✅ تم حفظ الإعدادات بنجاح!", "en": "✅ Settings saved successfully!"},
     "msg_save_err": {"ar": "❌ فشل حفظ الإعدادات", "en": "❌ Failed to save settings"},
+    
+    # ── Speed Limiter ──
+    "set_speed_limit": {"ar": "حد السرعة (KB/s — 0 = بلا حدود)", "en": "Speed Limit (KB/s — 0 = unlimited)"},
+    
+    # ── Maintenance ──
+    "card_maintenance": {"ar": "🛠  الصيانة والتحديثات", "en": "🛠  Maintenance & Updates"},
+    
+    # ── Converter Tab ──
+    "nav_converter": {"ar": "🔄  محول الصوت", "en": "🔄  Audio Converter"},
+    "conv_title": {"ar": "🔄  محول الصوتيات", "en": "🔄  Audio Converter"},
+    "conv_subtitle": {"ar": "حوّل ملفاتك الصوتية بين الصيغ المختلفة بسهولة", "en": "Convert your audio files between formats easily"},
+    "conv_card_input": {"ar": "📂  الملف المصدر", "en": "📂  Source File"},
+    "btn_choose_file": {"ar": "📁  اختر ملف", "en": "📁  Choose File"},
+    "conv_no_file": {"ar": "لم يتم اختيار ملف", "en": "No file selected"},
+    "conv_card_output": {"ar": "🎯  إعدادات الإخراج", "en": "🎯  Output Settings"},
+    "conv_out_format": {"ar": "صيغة الإخراج", "en": "Output Format"},
+    "conv_out_quality": {"ar": "الجودة", "en": "Quality"},
+    "btn_convert": {"ar": "🔄  تحويل الآن", "en": "🔄  Convert Now"},
+    "conv_ready": {"ar": "جاهز للتحويل", "en": "Ready to convert"},
+    "conv_converting": {"ar": "⏳ جاري التحويل...", "en": "⏳ Converting..."},
+    "conv_done": {"ar": "✅ تم التحويل بنجاح!", "en": "✅ Conversion complete!"},
+    "conv_err": {"ar": "❌ فشل التحويل", "en": "❌ Conversion failed"},
+    
+    # ── Drag & Drop ──
+    "drag_drop_hint": {"ar": "🖱️ اسحب الروابط هنا مباشرة", "en": "🖱️ Drag & drop links here"},
 }
 
 def get_text(key: str, **kwargs) -> str:

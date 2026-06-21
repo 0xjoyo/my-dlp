@@ -21,6 +21,7 @@ DEFAULTS = {
     "embed_lyrics": True,
     "embed_thumbnail": True,
     "language": "en",
+    "speed_limit": 0,
 }
 
 
