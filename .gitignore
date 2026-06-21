@@ -10,6 +10,11 @@ dist/
 
 # User specific config
 config.json
+history.json
+
+# GitHub CLI (used during automated builds)
+gh_cli/
+gh.zip
 
 # IDEs
 .vscode/

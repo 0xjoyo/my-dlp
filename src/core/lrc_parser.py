@@ -4,6 +4,11 @@ LRC Parser — Parse LRC (Lyric) files with timestamps
 import re
 from typing import List, Tuple, Optional
 
+# Compiled once at import time for performance.
+# Matches BOTH standard LRC [mm:ss.xx] and the less common
+# extended [hh:mm:ss.xx] format that some providers emit for long tracks.
+_TIMESTAMP_PATTERN = re.compile(r"\[\d{1,3}:\d{2}(?::\d{2})?\.?\d{1,3}\]")
+
 
 class LRCLine:
     """Represents a single lyric line with its timestamp."""
@@ -28,7 +33,10 @@ def parse_lrc(lrc_content: str) -> Tuple[List[LRCLine], dict]:
     metadata = {}
 
     # Regex patterns
+    # Standard LRC: [mm:ss.xx] (or [mm:ss.xxx])
     timestamp_pattern = re.compile(r"\[(\d{1,2}):(\d{2})\.(\d{2,3})\]")
+    # Extended LRC: [hh:mm:ss.xx] (some long-track providers use this)
+    extended_timestamp_pattern = re.compile(r"\[(\d{1,2}):(\d{2}):(\d{2})\.(\d{2,3})\]")
     metadata_pattern = re.compile(r"\[(\w+):(.*?)\]")
 
     for line in lines:
@@ -36,7 +44,20 @@ def parse_lrc(lrc_content: str) -> Tuple[List[LRCLine], dict]:
         if not line:
             continue
 
-        # Check for timestamps
+        # Check for extended [hh:mm:ss.xx] timestamps first (more specific)
+        extended = extended_timestamp_pattern.findall(line)
+        if extended:
+            text = extended_timestamp_pattern.sub("", line).strip()
+            for h, m, s, ms_str in extended:
+                ms = int(h) * 3600000 + int(m) * 60000 + int(s) * 1000
+                if len(ms_str) == 2:
+                    ms += int(ms_str) * 10
+                elif len(ms_str) == 3:
+                    ms += int(ms_str)
+                parsed_lines.append(LRCLine(time_ms=ms, text=text))
+            continue
+
+        # Check for standard [mm:ss.xx] timestamps
         timestamps = timestamp_pattern.findall(line)
         if timestamps:
             # Remove all timestamps from the line text
@@ -81,3 +102,13 @@ def lrc_to_plain_text(lrc_content: str) -> str:
     """Convert LRC content to plain text (no timestamps)."""
     lines, _ = parse_lrc(lrc_content)
     return "\n".join(line.text for line in lines if line.text)
+
+
+def has_lrc_timestamps(lrc_content: str) -> bool:
+    """
+    Return True if the given string contains any LRC timestamp pattern
+    like [mm:ss.xx] or [mm:ss.xxx]. Works for tracks longer than 1 hour too.
+    """
+    if not lrc_content:
+        return False
+    return bool(_TIMESTAMP_PATTERN.search(lrc_content))

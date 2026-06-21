@@ -129,8 +129,9 @@ class LyricsTab(ctk.CTkFrame):
         name, _ = os.path.splitext(base)
 
         lrc_text = lyrics_fetcher.get_lyrics(name, "")
-        if lrc_text and "[00:" in lrc_text:
-            lines = lrc_parser.parse_lrc(lrc_text)
+        # Detect any LRC timestamp pattern like [mm:ss.xx], not just [00:xx]
+        if lrc_text and lrc_parser.has_lrc_timestamps(lrc_text):
+            lines, _meta = lrc_parser.parse_lrc(lrc_text)
             self.after(0, lambda: self._on_lyrics_found(lines))
         else:
             self.after(0, lambda: self._on_lyrics_not_found())

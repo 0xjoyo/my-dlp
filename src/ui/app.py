@@ -177,11 +177,40 @@ class MyDLPApp(ctk.CTk):
         config = load_config()
         mode = config.get("appearance_mode", "dark")
         ctk.set_appearance_mode(mode)
-        
-        # Rebuild UI to apply language changes instantly
-        self.sidebar.destroy()
-        self.content.destroy()
-        
+
+        # Tear down old UI carefully so background threads and child widgets
+        # (notably VLC bindings inside LyricsTab) are released before we
+        # rebuild. Otherwise repeated language toggles can leak resources.
+        self._destroy_tabs()
+        try:
+            self.sidebar.destroy()
+        except Exception:
+            pass
+        try:
+            self.content.destroy()
+        except Exception:
+            pass
+        self._tabs = None
+        self._nav_buttons = None
+
         self.title(_("app_name"))
         self._build_ui()
-        self._select_tab(5) # Stay on the Settings tab (now index 5)
+        self._select_tab(5)  # Stay on the Settings tab (now index 5)
+
+    def _destroy_tabs(self):
+        """Best-effort cleanup of tab instances before rebuilding the UI."""
+        if not getattr(self, "_tabs", None):
+            return
+        for tab in self._tabs:
+            try:
+                # LyricsTab holds an AudioPlayer that wraps a VLC instance;
+                # release it explicitly to free the libvlc handle.
+                player = getattr(tab, "player", None)
+                if player is not None and hasattr(player, "cleanup"):
+                    try:
+                        player.cleanup()
+                    except Exception:
+                        pass
+                tab.destroy()
+            except Exception:
+                pass

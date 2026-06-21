@@ -1,13 +1,47 @@
 """
 Spotify Tab — Search tracks & playlists, view results, and download via yt-dlp
 """
+import io
 import threading
 import tkinter as tk
 import customtkinter as ctk
+import requests
+from PIL import Image
 
 from src.core import spotify_search, downloader
 from src.utils.config_manager import load_config
 from src.utils.i18n import _
+
+
+def _map_youtube_to_spotify_shape(youtube_results: list, query: str) -> list:
+    """
+    Convert a list of YouTube Music search results (dicts with
+    title/artist/youtube_url/thumbnail/...) into the Spotify-shaped list
+    that _on_search_done expects: [{type, title, artist, url, count}, ...]
+    """
+    mapped = []
+    for r in (youtube_results or []):
+        mapped.append({
+            "type": "track",
+            "title": r.get("title", "Unknown"),
+            "artist": r.get("artist", "Unknown"),
+            "url": r.get("youtube_url", ""),
+            "thumbnail": r.get("thumbnail", ""),
+            "duration": r.get("duration", ""),
+        })
+    # If nothing came back, expose the raw query as a fallback row
+    # so the user gets feedback instead of an empty results card.
+    if not mapped and query:
+        mapped.append({
+            "type": "track",
+            "title": query,
+            "artist": "Unknown",
+            "url": "",
+            "thumbnail": "",
+            "duration": "",
+        })
+    return mapped
+
 
 class SpotifyTab(ctk.CTkFrame):
     def __init__(self, parent, colors: dict):
@@ -109,14 +143,30 @@ class SpotifyTab(ctk.CTkFrame):
         for widget in self.results_frame.winfo_children():
             widget.destroy()
 
-        def do_search():
-            try:
-                res = spotify_search.search_spotify(query)
-                self.after(0, lambda: self._on_search_done(res))
-            except Exception as e:
-                self.after(0, lambda: self._on_search_error(str(e)))
+        def on_results(results: list):
+            # _on_search_done expects a Spotify-shaped list of {type, title, artist, url, count}
+            self.after(0, lambda: self._on_search_done(_map_youtube_to_spotify_shape(results, query)))
 
-        threading.Thread(target=do_search, daemon=True).start()
+        def on_error(err: str):
+            self.after(0, lambda: self._on_search_error(err))
+
+        # Search YouTube Music for tracks matching the query (Spotify API not required)
+        spotify_search.search_by_name(query, callback=on_results, error_callback=on_error)
+
+    def _async_set_thumb(self, label: ctk.CTkLabel, url: str, fallback_text: str = "🎵"):
+        """Download a thumbnail in a background thread and set it on the label."""
+        def _worker():
+            try:
+                r = requests.get(url, timeout=8)
+                if r.status_code == 200:
+                    img = Image.open(io.BytesIO(r.content)).resize((48, 48), Image.LANCZOS)
+                    cimg = ctk.CTkImage(img, size=(48, 48))
+                    self.after(0, lambda: label.configure(image=cimg, text=""))
+            except Exception:
+                # On failure show the fallback emoji
+                self.after(0, lambda: label.configure(text=fallback_text, font=ctk.CTkFont(size=22)))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_search_done(self, results: list):
         self.search_btn.configure(state="normal")
@@ -131,19 +181,35 @@ class SpotifyTab(ctk.CTkFrame):
             row.grid(row=i, column=0, sticky="ew", pady=6)
             row.grid_columnconfigure(1, weight=1)
 
-            # Icon
-            icon = "🎵" if item["type"] == "track" else "📋"
-            ctk.CTkLabel(row, text=icon, font=ctk.CTkFont(size=22)).grid(row=0, column=0, padx=16, pady=12)
+            # Thumbnail column (filled with icon or image)
+            icon_holder = ctk.CTkLabel(row, text="", width=48, height=48)
+            icon_holder.grid(row=0, column=0, padx=(12, 8), pady=8)
+
+            thumb_url = item.get("thumbnail", "")
+            if thumb_url:
+                self._async_set_thumb(icon_holder, thumb_url, fallback_text="🎵" if item["type"] == "track" else "📋")
+            else:
+                icon_holder.configure(
+                    text="🎵" if item["type"] == "track" else "📋",
+                    font=ctk.CTkFont(size=22),
+                )
 
             # Info
             info_frame = ctk.CTkFrame(row, fg_color="transparent")
             info_frame.grid(row=0, column=1, sticky="w")
-            
+
             title = f"{item['title']} - {item['artist']}" if item["type"] == "track" else item['title']
             ctk.CTkLabel(info_frame, text=title, font=ctk.CTkFont("Segoe UI", 14, "bold"),
                          text_color=self.colors["text_primary"]).pack(anchor="w")
-            
-            meta = f"Spotify URL" if item["type"] == "track" else _("lbl_tracks_count", count=item['count'])
+
+            meta_parts = []
+            if item.get("duration"):
+                meta_parts.append(f"⏱ {item['duration']}")
+            if item["type"] == "track":
+                meta_parts.append("YouTube Music")
+            else:
+                meta_parts.append(_("lbl_tracks_count", count=item.get('count', 0)))
+            meta = "  •  ".join(meta_parts) if meta_parts else "Spotify URL"
             ctk.CTkLabel(info_frame, text=meta, font=ctk.CTkFont("Segoe UI", 12),
                          text_color=self.colors["text_secondary"]).pack(anchor="w")
 
@@ -160,13 +226,19 @@ class SpotifyTab(ctk.CTkFrame):
         self.status_lbl.configure(text=f"❌ {err}", text_color=self.colors["error"])
 
     def _download_spotify_url(self, url: str):
-        # We will dispatch this back to the main downloader via a callback in a full app, 
+        if not url:
+            self.status_lbl.configure(
+                text="❌ " + _("msg_sp_no_results"),
+                text_color=self.colors["error"],
+            )
+            return
+        # We will dispatch this back to the main downloader via a callback in a full app,
         # or handle it directly. For now, we'll just download it to default dir.
         config = load_config()
         out_dir = config.get("download_path")
-        
+
         self.status_lbl.configure(text=f"⏳ {url} ...", text_color=self.colors["accent2"])
-        
+
         task = downloader.DownloadTask(
             url=url,
             mode="audio",
