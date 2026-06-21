@@ -1,6 +1,6 @@
 [Setup]
 AppName=my-dlp
-AppVersion=1.2.0
+AppVersion=1.2.1
 AppPublisher=0xjoyo
 AppPublisherURL=https://github.com/0xjoyo/my-dlp
 DefaultDirName={pf}\my-dlp
@@ -9,12 +9,16 @@ UninstallDisplayIcon={app}\my-dlp.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=dist
-OutputBaseFilename=my-dlp_v1.2.0_installer
+OutputBaseFilename=my-dlp_v1.2.1_installer
 SetupIconFile=assets\icon.ico
 DisableProgramGroupPage=yes
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkablealone
+
+; Always-on shortcuts (no user choice needed): Start Menu entry + Desktop icon
+; are both created for every install. Users can remove the desktop icon
+; afterwards if they don't want it.
 
 [Files]
 Source: "dist\my-dlp\my-dlp.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -24,7 +28,8 @@ Source: "dist\my-dlp\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 [Icons]
 Name: "{group}\my-dlp"; Filename: "{app}\my-dlp.exe"
 Name: "{group}\{cm:UninstallProgram,my-dlp}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\my-dlp"; Filename: "{app}\my-dlp.exe"; Tasks: desktopicon
+; Desktop shortcut — created unconditionally for every install
+Name: "{commondesktop}\my-dlp"; Filename: "{app}\my-dlp.exe"; IconFilename: "{app}\assets\icon.ico"
 
 [Run]
 Filename: "{app}\my-dlp.exe"; Description: "{cm:LaunchProgram,my-dlp}"; Flags: nowait postinstall skipifsilent

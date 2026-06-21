@@ -2,6 +2,22 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.2.1] - 2026-06-21
+
+### Fixed
+- **Program icon not showing in the titlebar or taskbar.** The previous icon setup only worked when the assets/ folder was in the current working directory; under PyInstaller's onedir mode the working directory is the EXE folder, not the project root, so `iconbitmap("assets/icon.ico")` silently failed. `app.py` now has a `_find_asset()` helper that probes a list of candidate locations (CWD, EXE dir, `sys._MEIPASS`, project root). Both the PNG and the ICO are applied — `iconphoto()` for the titlebar/taskbar via `CTkImage`, and `iconbitmap()` as a fallback for Windows.
+- **`assets/icon.ico` rebuilt as a multi-size ICO.** It now contains 16, 32, 48, 64, 128 and 256 pixel frames instead of only 32 and 64, so the taskbar icon is crisp at every DPI scale.
+- **`_protocol` typo in the close-window handler.** Replaced with `protocol()` so the window-close → hide-to-tray wiring actually fires.
+
+### Added
+- **Desktop shortcut for portable users.** `setup.iss` now creates a `my-dlp` icon on the user's desktop **unconditionally** on every install (was previously gated behind an unchecked task the user had to opt into). For portable users, the zip ships with a `create_shortcut.py` that builds the same `.lnk` (Windows) or `.desktop` (Linux/macOS) using PowerShell COM or a freedesktop entry respectively.
+- **Sidebar footer with version + author.** The two floating labels at the bottom of the sidebar (`v1.2.0 — powered by yt-dlp` and the shortcuts hint) were replaced with a single 3-line footer that reads:
+  - line 1 — `my-dlp  v<version>` (bold, dim)
+  - line 2 — `Ctrl+D Download  •  Ctrl+1-6 Tabs  •  Ctrl+U Updates`
+  - line 3 — `open-source · by 0xjoyo · github.com/0xjoyo/my-dlp`
+
+  The version is read live from the `VERSION` file shipped at the bundle root (works in dev mode and in the frozen exe), so it always matches what the auto-updater sees.
+
 ## [1.2.0] - 2026-06-21
 
 ### Added

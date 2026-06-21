@@ -13,6 +13,7 @@ v1.2.0 additions:
   updates manually, or fully quit.
 """
 import os
+import sys
 import threading
 import webbrowser
 import tkinter as tk
@@ -69,17 +70,35 @@ class MyDLPApp(ctk.CTk):
         self.minsize(900, 600)
         self.configure(fg_color=COLORS["bg_dark"])
 
-        # Set window icon if available. On Linux, tkinter doesn't read
-        # .ico — PhotoImage works with .png/.gif, so try the PNG first
-        # then fall back to the ico (Windows).
-        try:
-            if os.path.exists("assets/icon.png"):
-                icon_img = tk.PhotoImage(file="assets/icon.png")
-                self.iconphoto(True, icon_img)
-            elif os.path.exists("assets/icon.ico"):
-                self.iconbitmap("assets/icon.ico")
-        except Exception:
-            pass
+        # Set window icon if available. Try several candidate locations
+        # because PyInstaller's onedir mode launches the exe with CWD =
+        # the bundle's _internal folder, not the bundle root.
+        icon_ico = self._find_asset("icon.ico")
+        icon_png = self._find_asset("icon.png")
+        # PNG first (Linux/macOS — tkinter can't read .ico there).
+        # We use PIL because tk.PhotoImage doesn't handle RGBA PNGs.
+        if icon_png:
+            try:
+                from PIL import Image, ImageTk
+                pil_img = Image.open(icon_png).convert("RGBA")
+                # Resize to a sensible taskbar size on each platform.
+                ctk_img = ctk.CTkImage(
+                    light_image=pil_img,
+                    dark_image=pil_img,
+                    size=(64, 64),
+                )
+                self._icon_ref = ctk_img  # keep alive, otherwise GC'd
+                # Apply via wm iconphoto so the titlebar + taskbar pick it up
+                self.iconphoto(True, ctk_img._light_image)
+            except Exception:
+                pass
+        if icon_ico:
+            try:
+                self.iconbitmap(icon_ico)
+            except Exception:
+                # Linux raises tkinter.TclError here even though we caught it
+                # above. Safe to ignore.
+                pass
 
         # ── Update + tray state ──────────────────────────────────────
         self._update_info = None           # latest release dict from updater
@@ -97,6 +116,38 @@ class MyDLPApp(ctk.CTk):
         self.after(1500, self._check_for_updates_silent)
         # Set up the system tray (also non-blocking)
         self.after(200, self._init_tray)
+
+    # ── Asset discovery ───────────────────────────────────────────────
+
+    def _find_asset(self, filename: str) -> str | None:
+        """
+        Return the first existing path to `filename` from a list of candidate
+        locations. Handles both source-tree and PyInstaller-frozen layouts.
+        """
+        candidates = [
+            os.path.join("assets", filename),                                  # CWD
+            os.path.join(os.path.dirname(sys.executable), "assets", filename),# EXE dir (onedir)
+            os.path.join(os.path.dirname(sys.executable), filename),           # EXE dir (onefile)
+        ]
+        # PyInstaller frozen bundle exposes _MEIPASS for data files
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.insert(0, os.path.join(meipass, "assets", filename))
+            candidates.insert(0, os.path.join(meipass, filename))
+        # Project root in source mode
+        try:
+            here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            candidates.append(os.path.join(here, "assets", filename))
+        except Exception:
+            pass
+
+        for path in candidates:
+            try:
+                if path and os.path.isfile(path):
+                    return path
+            except OSError:
+                pass
+        return None
 
     # ── UI construction ──────────────────────────────────────────────
 
@@ -168,17 +219,49 @@ class MyDLPApp(ctk.CTk):
         )
         # grid managed by _set_update_badge_visible()
 
-        # Version label at bottom
-        ver_label = ctk.CTkLabel(self.sidebar, text=_("version_info"),
-                                  font=ctk.CTkFont(size=11),
-                                  text_color=COLORS["text_secondary"])
-        ver_label.grid(row=10, column=0, padx=20, pady=24, sticky="sw")
+        # Footer block — small text at the very bottom of the sidebar.
+        # Three lines:
+        #   line 1: project + version + tagline
+        #   line 2: keyboard shortcuts
+        #   line 3: author + GitHub URL
+        # We use a vertical frame with subtle dividers so the footer
+        # reads as a single visual unit instead of three floating labels.
+        footer = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        footer.grid(row=10, column=0, padx=20, pady=(16, 16), sticky="sew")
+        footer.grid_columnconfigure(0, weight=1)
 
-        # Shortcuts hint
-        shortcuts_label = ctk.CTkLabel(self.sidebar, text="Ctrl+D Download  •  Ctrl+1-6 Tabs",
-                                       font=ctk.CTkFont(size=10),
-                                       text_color=COLORS["border"])
-        shortcuts_label.grid(row=11, column=0, padx=20, pady=(0, 16), sticky="sw")
+        version_text = updater._running_version()
+        author_text = "by 0xjoyo"
+
+        # Line 1 — project + version
+        line1 = ctk.CTkLabel(
+            footer,
+            text=f"my-dlp  v{version_text}",
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text_color=COLORS["text_secondary"],
+            anchor="w",
+        )
+        line1.grid(row=0, column=0, sticky="ew")
+
+        # Line 2 — keyboard shortcuts (compact, in dimmer color)
+        line2 = ctk.CTkLabel(
+            footer,
+            text="Ctrl+D Download  •  Ctrl+1-6 Tabs  •  Ctrl+U Updates",
+            font=ctk.CTkFont(family="Segoe UI", size=10),
+            text_color=COLORS["border"],
+            anchor="w",
+        )
+        line2.grid(row=1, column=0, sticky="ew", pady=(2, 0))
+
+        # Line 3 — author + GitHub
+        line3 = ctk.CTkLabel(
+            footer,
+            text=f"open-source · {author_text} · github.com/0xjoyo/my-dlp",
+            font=ctk.CTkFont(family="Segoe UI", size=10),
+            text_color=COLORS["border"],
+            anchor="w",
+        )
+        line3.grid(row=2, column=0, sticky="ew", pady=(2, 0))
 
         # ── Content area ─────────────────────────────────────────────
         self.content = ctk.CTkFrame(self, fg_color=COLORS["bg_dark"], corner_radius=0)
