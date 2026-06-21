@@ -28,8 +28,10 @@ Source: "dist\my-dlp\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 [Icons]
 Name: "{group}\my-dlp"; Filename: "{app}\my-dlp.exe"
 Name: "{group}\{cm:UninstallProgram,my-dlp}"; Filename: "{uninstallexe}"
-; Desktop shortcut — created unconditionally for every install
-Name: "{commondesktop}\my-dlp"; Filename: "{app}\my-dlp.exe"; IconFilename: "{app}\assets\icon.ico"
+; Desktop shortcut — created unconditionally for every install.
+; No IconFilename — Windows picks up the icon embedded in the EXE
+; by PyInstaller's --icon flag.
+Name: "{commondesktop}\my-dlp"; Filename: "{app}\my-dlp.exe"
 
 [Run]
 Filename: "{app}\my-dlp.exe"; Description: "{cm:LaunchProgram,my-dlp}"; Flags: nowait postinstall skipifsilent
