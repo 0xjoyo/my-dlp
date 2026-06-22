@@ -2,6 +2,12 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.5] - 2026-06-22
+
+### Fixed
+- **[History tab crash]** Fixed `NameError: name 'filter_row' is not defined`
+  caused by a typo in the export button parent frame.
+
 ## [1.3.4] - 2026-06-22
 
 ### Added

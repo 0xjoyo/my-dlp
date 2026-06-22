@@ -1,16 +1,16 @@
 [Setup]
 AppName=my-dlp
-AppVersion=1.3.4
+AppVersion=1.3.5
 AppPublisher=0xjoyo
 AppPublisherURL=https://github.com/0xjoyo/my-dlp
-DefaultDirName={pf}\\my-dlp
+DefaultDirName={pf}\my-dlp
 DefaultGroupName=my-dlp
-UninstallDisplayIcon={app}\\my-dlp.exe
-VersionInfoVersion=1.3.4.0
+UninstallDisplayIcon={app}\my-dlp.exe
+VersionInfoVersion=1.3.5.0
 Compression=lzma2
 SolidCompression=yes
 OutputDir=dist
-OutputBaseFilename=my-dlp_v1.3.4_installer
+OutputBaseFilename=my-dlp_v1.3.5_installer
 SetupIconFile=assets\icon.ico
 DisableProgramGroupPage=yes
 
