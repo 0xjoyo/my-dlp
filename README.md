@@ -6,7 +6,7 @@
 > art, and keep your library tidy — all from a sleek, dark-mode UI available
 > in English and Arabic.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blueviolet)
+![Version](https://img.shields.io/badge/version-1.3.7-blueviolet)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
