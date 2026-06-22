@@ -166,6 +166,18 @@ TRANSLATIONS = {
     "upd_btn_later":     {"ar": "⏰ لاحقاً", "en": "⏰ Later"},
     "upd_btn_skip":      {"ar": "🚫 تجاهل هذا الإصدار", "en": "🚫 Skip this version"},
 
+    # ── In-app download & install ──
+    "upd_btn_dl_install": {"ar": "📥 تنزيل وتثبيت", "en": "📥 Download & Install"},
+    "upd_dl_status_downloading": {"ar": "يتم تنزيل التحديث... {downloaded} / {total}", "en": "Downloading update... {downloaded} / {total}"},
+    "upd_dl_status_verifying": {"ar": "يتم التحقق من التحديث...", "en": "Verifying download..."},
+    "upd_dl_status_running": {"ar": "يتم تشغيل المثبت...", "en": "Starting installer..."},
+    "upd_dl_confirm_close": {"ar": "التحديث جاهز للتثبيت. سيتم إغلاق البرنامج لتثبيت التحديث.\n\nهل تريد المتابعة؟", "en": "The update is ready to install. The app will close to apply the update.\n\nDo you want to continue?"},
+    "upd_dl_confirm_title": {"ar": "تأكيد التثبيت", "en": "Confirm Installation"},
+    "upd_dl_error": {"ar": "فشل التنزيل: {error}", "en": "Download failed: {error}"},
+    "upd_dl_retry": {"ar": "إعادة المحاولة", "en": "Retry"},
+    "upd_dl_btn_yes": {"ar": "نعم، قم بالتثبيت", "en": "Yes, Install"},
+    "upd_dl_btn_no": {"ar": "إلغاء", "en": "Cancel"},
+
     # ── Sidebar update badge ──
     "upd_badge_tooltip": {"ar": "يوجد تحديث جديد", "en": "Update available"},
 
