@@ -155,9 +155,9 @@ def run_installer_and_exit(installer_path: str, silent: bool = True) -> None:
       /SILENT  - Hide the wizard, only show progress
       /CLOSEAPPLICATIONS - Ask Windows to close our app first
 
-    After launching, we call os._exit(0) which is the hard-quit variant
-    of sys.exit — it bypasses atexit handlers and Tk's cleanup so the
-    installer doesn't get blocked trying to overwrite a running file.
+    Before launching, we kill any lingering my-dlp processes (including
+    the pystray daemon thread) using taskkill so the installer can
+    replace the EXE without conflict.
     """
     if not installer_path or not os.path.isfile(installer_path):
         return
@@ -167,9 +167,14 @@ def run_installer_and_exit(installer_path: str, silent: bool = True) -> None:
         flags.append("/SILENT")
     flags.append("/CLOSEAPPLICATIONS")
 
+    # ── Step 1: Kill any sibling my-dlp processes ────────────────────
+    # This handles the case where the tray icon thread or a stale
+    # process from a previous update is still holding the EXE lock.
+    _kill_own_processes()
+
+    # ── Step 2: Launch the installer ──────────────────────────────────
     try:
         # DETACHED_PROCESS so the installer keeps running after we exit.
-        # On non-Windows this is a no-op (we just spawn it normally).
         creationflags = 0
         if sys.platform == "win32":
             creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
@@ -179,12 +184,38 @@ def run_installer_and_exit(installer_path: str, silent: bool = True) -> None:
             close_fds=True,
         )
     except OSError:
-        # If the installer couldn't be launched (e.g. AV blocked it)
-        # we don't exit; the user still has the original app running.
         return
 
-    # Give the installer 0.5s to start so it can lock the file before
-    # we hand control back to Tk's atexit handlers.
+    # ── Step 3: Exit hard so the file lock is released ────────────────
+    # We use taskkill to force-kill our own process tree, then os._exit
+    # as a safety net. The 0.5s sleep gives the Inno Setup process time
+    # to start and register with the Restart Manager before we vanish.
     import time
     time.sleep(0.5)
+    _force_exit()
+
+
+def _kill_own_processes():
+    """Terminate every other my-dlp.exe process on the system (Windows)."""
+    if sys.platform != "win32":
+        return
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "my-dlp.exe"],
+            timeout=5, capture_output=True,
+        )
+    except Exception:
+        pass
+
+
+def _force_exit():
+    """Hard-terminate the current process and all its threads."""
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/F", "/PID", str(os.getpid())],
+                timeout=5, capture_output=True,
+            )
+        except Exception:
+            pass
     os._exit(0)

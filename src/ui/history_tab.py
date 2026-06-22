@@ -80,6 +80,12 @@ class HistoryTab(ctk.CTkFrame):
         )
         clear_btn.grid(row=0, column=2)
 
+        export_btn = ctk.CTkButton(filter_row, text=_("btn_export_csv"), width=120, height=36,
+                                   corner_radius=8, fg_color=self.colors["border"],
+                                   hover_color=self.colors["accent"],
+                                   command=self._export_csv)
+        export_btn.grid(row=0, column=3, padx=(8, 0))
+
     def _apply_filter(self):
         """Filter displayed history by search text + mode."""
         query = self.search_var.get().strip().lower()
@@ -164,3 +170,28 @@ class HistoryTab(ctk.CTkFrame):
                 dir_path = os.path.dirname(path)
                 if os.path.exists(dir_path):
                     os.startfile(dir_path)
+
+    def _export_csv(self):
+        """Export history to a CSV file in the Downloads folder."""
+        import csv
+        from pathlib import Path
+
+        dest = Path.home() / "Downloads" / f"my-dlp_history_{__import__('datetime').datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        try:
+            with open(dest, "w", newline="", encoding="utf-8-sig") as f:
+                w = csv.writer(f)
+                w.writerow(["title", "url", "path", "mode", "date"])
+                for item in self._all_history:
+                    w.writerow([
+                        item.get("title", ""),
+                        item.get("url", ""),
+                        item.get("path", ""),
+                        item.get("mode", ""),
+                        item.get("date", ""),
+                    ])
+            # Show a quick status message
+            from tkinter import messagebox
+            messagebox.showinfo(_("msg_export_done"), f"{dest}")
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Error", str(e))

@@ -13,6 +13,7 @@ v1.2.0 additions:
   updates manually, or fully quit.
 """
 import os
+import io
 import sys
 import threading
 import webbrowser
@@ -295,6 +296,8 @@ class MyDLPApp(ctk.CTk):
         self.bind("<Control-v>", lambda e: self._quick_paste())
         # Ctrl+U = Check for updates manually
         self.bind("<Control-u>", lambda e: self._check_for_updates_silent(force=True))
+        # Ctrl+/ = Show keyboard shortcuts
+        self.bind("<Control-slash>", lambda e: self._show_keyboard_shortcuts())
 
     def _quick_paste(self):
         """Quick paste: go to downloader and paste clipboard."""
@@ -458,24 +461,14 @@ class MyDLPApp(ctk.CTk):
         if not _HAS_PYSTRAY:
             return
 
-        # Try to build a 64x64 icon, falling back to a solid-colour
-        # generated image if no file is accessible.
-        try:
-            icon_path = self._find_asset("icon.png")
-            if not icon_path:
-                icon_path = self._find_asset("icon.ico")
-            if icon_path:
-                icon_img = _PILImage.open(icon_path).convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
-            else:
-                icon_img = _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
-        except Exception:
-            icon_img = _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
+        icon_img = self._load_tray_icon()
 
         menu = pystray.Menu(
             pystray.MenuItem(_("tray_show"), self._tray_show, default=True),
             pystray.MenuItem(_("tray_hide"), self._tray_hide),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(_("tray_check_update"), lambda: self._check_for_updates_silent(force=True)),
+            pystray.MenuItem(_("nav_stats"), lambda: self._select_tab(5)),
             pystray.MenuItem(_("nav_settings"), lambda: self._select_tab(6)),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(_("tray_quit"), self._tray_quit),
@@ -486,8 +479,90 @@ class MyDLPApp(ctk.CTk):
             icon.title = _("tray_running_in")
 
         self._tray_icon = pystray.Icon("my-dlp", icon=icon_img, title=_("tray_running_in"), menu=menu)
-        # Run tray on its own daemon thread so it doesn't block tkinter
         threading.Thread(target=self._tray_icon.run, kwargs={"setup": _setup}, daemon=True).start()
+
+    def _show_keyboard_shortcuts(self):
+        """Show a popup with all keyboard shortcuts."""
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(_("key_title"))
+        dlg.geometry("420x320")
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+        dlg.configure(fg_color=self.colors["bg_dark"])
+
+        # Center on parent
+        self.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 420) // 2
+        y = self.winfo_y() + (self.winfo_height() - 320) // 2
+        dlg.geometry(f"+{x}+{y}")
+
+        ctk.CTkLabel(dlg, text=_("key_title"),
+                     font=ctk.CTkFont("Segoe UI", 20, "bold"),
+                     text_color=self.colors["accent"]
+                     ).pack(padx=30, pady=(24, 16))
+
+        ctk.CTkLabel(dlg, text=_("key_list"),
+                     font=ctk.CTkFont("Segoe UI", 14),
+                     text_color=self.colors["text_primary"],
+                     justify="left", anchor="w"
+                     ).pack(padx=40, pady=8)
+
+        ctk.CTkButton(dlg, text="OK", width=120, height=36,
+                      corner_radius=8, fg_color=self.colors["accent"],
+                      hover_color=self.colors["accent_hover"],
+                      command=dlg.destroy
+                      ).pack(pady=20)
+
+    def _load_tray_icon(self):
+        """
+        Load a tray icon (64×64 RGBA).  Tries:
+
+          1. PNG from external assets (source tree or _MEIPASS)
+          2. ICO from external assets
+          3. Embedded base64-encoded PNG (always works — no file needed)
+
+        Returns a PIL Image ready for pystray.
+        """
+        # ── Built-in fallback icon (64×64 purple "M" letter) ─────
+        # This is embedded so the tray ALWAYS has an icon, even if
+        # the assets directory is missing or inaccessible.
+        _FALLBACK_B64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAA"
+            "AsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAI"
+            "3SURBVHgB7Zq9bhQxEMd3dpNcCBJSAgUFHQUFBQ0Vf3R0dDwBRUUFHQUF"
+            "BQUFBR0FBRUFFBQUEFzKJ3J8e7azvh3P7d4pViT/ZMu78/PMn2c8awYAA"
+            "AAAAAAAAAD4T/hkmvbZNP2ciflkmh6Z5vlCpmmaPjVNH0zTQ9P0yjQ9Mk"
+            "3vTdO7GZlh0/Qr6IR9WhLa0+L3ImRqfXLn3zYgrdHZVz0B2ghgJYrgn3m"
+            "I6ms/Pwrn56nT3jR9q9nRj6m+K9P0PpJX0YRPTdOjkv7oFKB1dM5VT4A"
+            "2AllEmcr17pUBWAR3UgQI80i9PtsnsC8J8CLD+3IB+0hAS9oEY40AX3QE"
+            "cgtYJQHyL8VqBPiUI8AS/r29vS2DweA6lfLc39+/NwqAq0SAdBzOBWiNg"
+            "OsaAVhnBWiNAJcVAqzS0Nra2ppECHhujw8PD5s6nGpPwPn5+aHd398vl/"
+            "Dtdnu5XC6/NsOjo6NqArvd7slkMtkzTfe7XC6f2Dp6/fr12+vr659V92"
+            "9vbw+22+2TnZ2dzzrG2tvbbx8+fPgzHo+/lgjYbDY/9TkajX7cunXrYx"
+            "HjdDp9NhqN3mjLw+GQ8X7//v3X69evv5v+ANgXfAIIZel2u9+n0+m7m5"
+            "ubH0X8hZ2dnQ+bzebb5eXlUVG/rRYfK6B28U0TIIqC/S1wXRMgiq8TII"
+            "qyE0CUmYAsMxNw3RKwEgEAAAAAAAAAAABG/AUJ+VpkMk5wDgAAAABJRU"
+            "5ErkJggg=="
+        )
+        import base64
+        _FALLBACK = base64.b64decode(_FALLBACK_B64)
+
+        # ── Try to load from file ──────────────────────────────────
+        for filename in ("icon.png", "icon.ico"):
+            try:
+                path = self._find_asset(filename)
+                if path:
+                    img = _PILImage.open(path).convert("RGBA")
+                    return img.resize((64, 64), _PILImage.LANCZOS)
+            except Exception:
+                continue
+
+        # ── Fallback to embedded PNG ────────────────────────────────
+        try:
+            return _PILImage.open(io.BytesIO(_FALLBACK)).convert("RGBA")
+        except Exception:
+            return _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
 
     def _tray_show(self, icon=None, item=None):
         self.after(0, self._show_from_tray)

@@ -109,9 +109,28 @@ class DownloaderTab(ctk.CTkFrame):
         self.fetch_status = ctk.CTkLabel(url_card, text="", font=ctk.CTkFont("Segoe UI", 12))
         self.fetch_status.grid(row=2, column=0, sticky="w", pady=(8, 0))
 
+        # ── Download Presets ──
+        presets = [(_("preset_mp3"), "audio", "192kbps"),
+                    (_("preset_hd"), "video", "1080p"),
+                    (_("preset_4k"), "video", "4K"),
+                    (_("preset_best_audio"), "audio", "320kbps")]
+        preset_card = self._card(scroll, _("card_presets"))
+        preset_card.grid(row=1, column=0, padx=36, pady=16, sticky="ew")
+        preset_card.grid_columnconfigure(0, weight=1)
+   
+        preset_row = ctk.CTkFrame(preset_card, fg_color="transparent")
+        preset_row.grid(row=1, column=0, padx=12, pady=(4, 16))
+        for txt, mode, quality in presets:
+            btn = ctk.CTkButton(preset_row, text=txt, width=120, height=36,
+                                corner_radius=8, fg_color=self.colors["border"],
+                                hover_color=self.colors["accent"],
+                                font=ctk.CTkFont("Segoe UI", 12))
+            btn.configure(command=lambda m=mode, q=quality: self._apply_preset(m, q))
+            btn.pack(side="left", padx=8)
+
         # ── Info & Tag Editor Card ──
         self.info_card = self._card(scroll, "")
-        self.info_card.grid(row=1, column=0, padx=36, pady=16, sticky="ew")
+        self.info_card.grid(row=2, column=0, padx=36, pady=16, sticky="ew")
         self.info_card.grid_columnconfigure(1, weight=1)
         self.info_card.grid_remove()
 
@@ -171,7 +190,7 @@ class DownloaderTab(ctk.CTkFrame):
 
         # ── Progress Card ──
         prog_card = self._card(scroll, _("card_progress"))
-        prog_card.grid(row=3, column=0, padx=36, pady=16, sticky="ew")
+        prog_card.grid(row=4, column=0, padx=36, pady=16, sticky="ew")
         prog_card.grid_columnconfigure(0, weight=1)
 
         self.progress_bar = ctk.CTkProgressBar(prog_card, height=16, corner_radius=8, fg_color=self.colors["bg_dark"], progress_color=self.colors["accent"])
@@ -186,7 +205,7 @@ class DownloaderTab(ctk.CTkFrame):
             scroll, text=_("btn_download"), height=60, corner_radius=16, font=ctk.CTkFont("Segoe UI", 18, "bold"),
             fg_color=self.colors["accent"], hover_color=self.colors["accent_hover"], command=self._on_download_click,
         )
-        self.dl_btn.grid(row=4, column=0, padx=36, pady=(12, 40), sticky="ew")
+        self.dl_btn.grid(row=5, column=0, padx=36, pady=(12, 40), sticky="ew")
 
     def _card(self, parent, title: str) -> ctk.CTkFrame:
         frame = ctk.CTkFrame(parent, fg_color=self.colors["card_bg"], corner_radius=16, border_width=1, border_color=self.colors["border"])
@@ -330,6 +349,39 @@ class DownloaderTab(ctk.CTkFrame):
     def _on_fetch_error(self, error: str):
         self.fetch_status.configure(text=f"❌ {error[:80]}", text_color=self.colors["error"])
 
+    def _apply_preset(self, mode: str, quality: str):
+        """Apply a download preset: switches mode + quality and starts fetch."""
+        self.mode_var.set(mode)
+        self._on_mode_change()
+        self.quality_var.set(quality)
+        self._on_fetch()
+
+    def _check_duplicates(self, urls: list) -> bool:
+        """Return True if we should continue downloading (user clicked OK)."""
+        out_dir = self.folder_var.get()
+        config = load_config()
+        tmpl = config.get("filename_template", "%(title)s.%(ext)s")
+        dupes = []
+        for url in urls:
+            # Rough estimate: we can't know the exact title before fetch,
+            # so we just warn generically for batch, or check the fetched info
+            if self._info and self._info.get("type") != "playlist":
+                title = self._info.get("title", url)
+                # Guess extensions
+                ext = ".mp4" if self.mode_var.get() == "video" else ".m4a"
+                # Try common patterns
+                safe_tmpl = tmpl.replace("%(title)s", title[:80]) \
+                                 .replace("%(ext)s", ext.lstrip(".")) \
+                                 .replace("%(uploader)s", "").replace("%(id)s", "")
+                safe_name = "".join(c for c in safe_tmpl if c not in r'<>:"/\|?*').strip()
+                if safe_name and os.path.isfile(os.path.join(out_dir, safe_name)):
+                    dupes.append(safe_name)
+        if dupes:
+            from tkinter import messagebox
+            msg = _("dup_warn").format(files="\n".join(dupes[:5]))
+            return messagebox.askyesno(_("dup_title"), msg)
+        return True
+
     def _on_download_click(self):
         urls = self._get_urls()
         if not urls:
@@ -342,6 +394,9 @@ class DownloaderTab(ctk.CTkFrame):
             except Exception:
                 self.progress_label.configure(text=_("err_invalid_folder"), text_color=self.colors["error"])
                 return
+
+        if not self._check_duplicates(urls):
+            return
 
         self._download_queue = urls
         self.dl_btn.configure(state="disabled")

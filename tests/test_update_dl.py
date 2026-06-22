@@ -214,10 +214,9 @@ class TestRunInstallerAndExit:
     def test_existing_path_spawns_and_exits(self, tmp_path, monkeypatch):
         installer = tmp_path / "inst.exe"
         installer.write_bytes(b"x" * 4)
-
-        # Don't actually os._exit — we patch it to a no-op
-        exit_calls = []
-        monkeypatch.setattr(update_dl.os, "_exit", lambda code: exit_calls.append(code))
+        monkeypatch.setattr(update_dl.os, "_exit", lambda c: None)
+        # Mock subprocess.run (used by _kill_own_processes + _force_exit)
+        monkeypatch.setattr(update_dl.subprocess, "run", lambda *a, **k: None)
 
         popen_calls = []
         class FakePopen:
@@ -225,10 +224,12 @@ class TestRunInstallerAndExit:
                 popen_calls.append((args, kw))
         monkeypatch.setattr(update_dl.subprocess, "Popen", FakePopen)
 
-        update_dl.run_installer_and_exit(str(installer), silent=True)
+        exit_calls = []
+        monkeypatch.setattr(update_dl.os, "_exit", lambda c: exit_calls.append(c))
 
+        update_dl.run_installer_and_exit(str(installer))
         assert len(popen_calls) == 1
-        args, kwargs = popen_calls[0]
+        args, _kwargs = popen_calls[0]
         # Args: [installer, "/SP-", "/SILENT", "/CLOSEAPPLICATIONS"]
         assert args[0] == str(installer)
         assert "/SP-" in args
@@ -241,15 +242,17 @@ class TestRunInstallerAndExit:
         installer = tmp_path / "inst.exe"
         installer.write_bytes(b"x" * 4)
         monkeypatch.setattr(update_dl.os, "_exit", lambda c: None)
+        # Mock subprocess.run (used by _kill_own_processes + _force_exit)
+        monkeypatch.setattr(update_dl.subprocess, "run", lambda *a, **k: None)
 
         popen_calls = []
         class FakePopen:
             def __init__(self, args, **kw):
-                popen_calls.append(args)
+                popen_calls.append((args, kw))
         monkeypatch.setattr(update_dl.subprocess, "Popen", FakePopen)
 
         update_dl.run_installer_and_exit(str(installer), silent=False)
-        args = popen_calls[0]
+        args, _kw = popen_calls[0]
         assert "/SILENT" not in args
         assert "/SP-" in args
         assert "/CLOSEAPPLICATIONS" in args

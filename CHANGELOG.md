@@ -2,6 +2,27 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.3] - 2026-06-22
+
+### Added
+- **[Download presets]** Quick-select buttons (MP3, HD, 4K, High Quality Audio)
+  that switch mode/quality and auto-fetch the URL.
+- **[Duplicate check]** Before downloading, warns if the output file already
+  exists and asks whether to overwrite.
+- **[Export history]** One-click CSV export of the download history to your
+  Downloads folder.
+- **[Keyboard shortcuts popup]** Press Ctrl+/ (or ⌘+/) to see all available
+  shortcuts in a clean overlay.
+- **[Tray icon]** Replaced fragile file-dependent icon loading with an embedded
+  base64 fallback — the tray icon now always works, even if assets are missing.
+
+### Fixed
+- **[Update close]** `run_installer_and_exit()` now forcefully kills all
+  sibling my-dlp.exe processes and uses `taskkill` on its own PID before
+  `os._exit(0)`, ensuring the EXE is fully unlocked for the installer.
+- **[Row shift]** Swapped download and quality formatting for better metadata
+  consistency.
+
 ## [1.3.2] - 2026-06-22
 
 ### Added

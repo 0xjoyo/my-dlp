@@ -143,6 +143,25 @@ TRANSLATIONS = {
     "stats_storage":       {"ar": "المساحة المستخدمة:", "en": "Storage Used:"},
     "stats_date":          {"ar": "التاريخ", "en": "Date"},
     "stats_file":          {"ar": "الملف", "en": "File"},
+
+    # ── Presets ──
+    "card_presets":    {"ar": "⚡  إعدادات سريعة", "en": "⚡  Quick Presets"},
+    "preset_mp3":      {"ar": "🎵 MP3", "en": "🎵 MP3"},
+    "preset_hd":       {"ar": "🎬 HD فيديو", "en": "🎬 HD Video"},
+    "preset_4k":       {"ar": "📺 4K", "en": "📺 4K"},
+    "preset_best_audio": {"ar": "🎧 صوت عالي", "en": "🎧 High Quality Audio"},
+
+    # ── Duplicate Check ──
+    "dup_title": {"ar": "⚠️  ملف موجود", "en": "⚠️  File Exists"},
+    "dup_warn":  {"ar": "الملفات دي موجودة قبل كده: \n{files}\n\nهل تريد تنزيلها تاني وتجاوز القديم؟", "en": "These files already exist:\n{files}\n\nDownload again and overwrite?"},
+
+    # ── Export ──
+    "btn_export_csv": {"ar": "📥  تصدير CSV", "en": "📥  Export CSV"},
+    "msg_export_done": {"ar": "✅ تم تصدير السجل", "en": "✅ History exported"},
+
+    # ── Keyboard shortcuts ──
+    "key_title": {"ar": "⌨  اختصارات لوحة المفاتيح", "en": "⌨  Keyboard Shortcuts"},
+    "key_list":  {"ar": "Ctrl+1-7 → التبديل بين التبويبات\nCtrl+D    → التحميل\nCtrl+V    → لصق الرابط\nCtrl+U    → التحقق من التحديثات\nCtrl+/    → إظهار الاختصارات\nCtrl+L    → نقل التركيز لصندوق تحميل", "en": "Ctrl+1-7 → Switch tabs\nCtrl+D    → Download tab\nCtrl+V    → Paste URL\nCtrl+U    → Check for updates\nCtrl+/    → Show shortcuts\nCtrl+L    → Focus download box"},
     
     # ── Maintenance ──
     "card_maintenance": {"ar": "🛠  الصيانة والتحديثات", "en": "🛠  Maintenance & Updates"},
