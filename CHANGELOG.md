@@ -2,6 +2,26 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.1] - 2026-06-21
+
+### Added
+- **In-app download & install** for updates. The Update dialog now has a
+  "Download & Install" button that downloads the installer, shows a progress
+  bar, verifies the download, and prompts the user before closing the app.
+- `src/core/update_dl.py` — download, verify (SHA-256 / size), and launch
+  the Inno Setup installer with `/CLOSEAPPLICATIONS` so it safely replaces the
+  running binary.
+- **Progress bar + status label** in the update dialog during download.
+- **Confirmation dialog** before closing the app for installation.
+- i18n strings (ar + en) for the new download & install flow.
+
+### Fixed
+- Desktop shortcut icon now uses the embedded EXE icon (removed broken
+  `IconFilename` from `setup.iss`).
+- Portable `create_shortcut.py` now finds the icon in `_internal/assets/`
+  (frozen build) as well as `assets/` (dev mode).
+- `build_portable_zip.py` now includes `create_shortcut.py` in the zip.
+
 ## [1.3.0] - 2026-06-21
 
 ### Added
