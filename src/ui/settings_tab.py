@@ -138,6 +138,28 @@ class SettingsTab(ctk.CTkFrame):
                      font=ctk.CTkFont("Segoe UI", 12),
                      text_color=self.colors["text_secondary"]).pack(side="left", padx=(10, 0))
 
+        # ── Filename template ──
+        self._setting_row(dl_card, 13, _("set_fn_template"))
+        self.fn_template_var = ctk.StringVar(
+            value=self._config.get("filename_template", "%(title)s.%(ext)s")
+        )
+        fn_row = ctk.CTkFrame(dl_card, fg_color="transparent")
+        fn_row.grid(row=14, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 24))
+        fn_row.grid_columnconfigure(0, weight=1)
+        ctk.CTkEntry(fn_row, textvariable=self.fn_template_var,
+                     placeholder_text="%(title)s.%(ext)s",
+                     height=42, corner_radius=10,
+                     font=ctk.CTkFont("Segoe UI", 13),
+                     fg_color=self.colors["bg_dark"],
+                     border_color=self.colors["border"],
+                     text_color=self.colors["text_primary"]
+                     ).grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        ctk.CTkLabel(fn_row,
+                     text=_("set_fn_vars"),
+                     font=ctk.CTkFont("Segoe UI", 11),
+                     text_color=self.colors["text_secondary"]
+                     ).grid(row=1, column=0, sticky="w", pady=(4, 0))
+
         # ── Spotify Settings ──────────────────────────────────────────
         sp_card = self._card(scroll, _("card_sp_set"))
         sp_card.grid(row=1, column=0, padx=36, pady=16, sticky="ew")
@@ -328,6 +350,10 @@ class SettingsTab(ctk.CTkFrame):
             config["speed_limit"] = int(self.speed_limit_var.get().strip())
         except (ValueError, AttributeError):
             config["speed_limit"] = 0
+
+        # Filename template
+        fn_tpl = self.fn_template_var.get().strip()
+        config["filename_template"] = fn_tpl if fn_tpl else "%(title)s.%(ext)s"
 
         if save_config(config):
             self.save_status.configure(text=_("msg_saved"), text_color=self.colors["success"])

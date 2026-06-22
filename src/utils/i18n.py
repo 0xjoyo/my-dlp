@@ -13,10 +13,13 @@ TRANSLATIONS = {
     "nav_lyrics": {"ar": "🎤  الكلمات المتزامنة", "en": "🎤  Synced Lyrics"},
     "nav_history": {"ar": "🕒  سجل التحميلات", "en": "🕒  Download History"},
     "nav_settings": {"ar": "⚙  الإعدادات", "en": "⚙  Settings"},
+    "nav_stats":    {"ar": "📊  الإحصائيات", "en": "📊  Statistics"},
     "version_info": {"ar": "v1.0.0  •  مدعوم بـ yt-dlp", "en": "v1.0.0  •  Powered by yt-dlp"},
     
     # ── History Tab ──
     "hist_subtitle": {"ar": "سجل بكل الملفات اللي تم تنزيلها", "en": "Log of all downloaded files"},
+    "hist_search_ph": {"ar": "🔍 بحث في السجل...", "en": "🔍 Search history..."},
+    "hist_all":        {"ar": "الكل", "en": "All"},
     "btn_clear_hist": {"ar": "🗑 مسح السجل", "en": "🗑 Clear History"},
     "hist_empty": {"ar": "السجل فارغ حالياً.", "en": "History is currently empty."},
     "btn_open_folder": {"ar": "📁 فتح المجلد", "en": "📁 Open Folder"},
@@ -127,6 +130,19 @@ TRANSLATIONS = {
     
     # ── Speed Limiter ──
     "set_speed_limit": {"ar": "حد السرعة (KB/s — 0 = بلا حدود)", "en": "Speed Limit (KB/s — 0 = unlimited)"},
+    "set_fn_template": {"ar": "📝  تنسيق اسم الملف:", "en": "📝  File name template:"},
+    "set_fn_vars":     {"ar": "متغيرات متاحة: %(title)s, %(uploader)s, %(id)s, %(ext)s", "en": "Variables: %(title)s, %(uploader)s, %(id)s, %(ext)s"},
+
+    # ── Statistics ──
+    "stats_subtitle":     {"ar": "إحصائيات التنزيلات واستخدام التخزين", "en": "Download stats and storage usage"},
+    "card_stats_overview": {"ar": "📊  نظرة عامة", "en": "📊  Overview"},
+    "card_stats_recent":   {"ar": "🕐  آخر التنزيلات", "en": "🕐  Recent Downloads"},
+    "stats_total":         {"ar": "إجمالي التنزيلات:", "en": "Total Downloads:"},
+    "stats_videos":        {"ar": "فيديو:", "en": "Video:"},
+    "stats_audio":         {"ar": "صوت:", "en": "Audio:"},
+    "stats_storage":       {"ar": "المساحة المستخدمة:", "en": "Storage Used:"},
+    "stats_date":          {"ar": "التاريخ", "en": "Date"},
+    "stats_file":          {"ar": "الملف", "en": "File"},
     
     # ── Maintenance ──
     "card_maintenance": {"ar": "🛠  الصيانة والتحديثات", "en": "🛠  Maintenance & Updates"},

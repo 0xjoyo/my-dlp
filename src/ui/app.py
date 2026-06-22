@@ -22,8 +22,9 @@ import customtkinter as ctk
 from src.ui.downloader_tab import DownloaderTab
 from src.ui.spotify_tab import SpotifyTab
 from src.ui.lyrics_tab import LyricsTab
-from src.ui.history_tab import HistoryTab
 from src.ui.converter_tab import ConverterTab
+from src.ui.history_tab import HistoryTab
+from src.ui.stats_tab import StatsTab
 from src.ui.settings_tab import SettingsTab
 from src.ui.update_dialog import UpdateDialog
 from src.utils.config_manager import load_config
@@ -187,7 +188,8 @@ class MyDLPApp(ctk.CTk):
             (_("nav_lyrics"),     2, "lyrics"),
             (_("nav_converter"),  3, "converter"),
             (_("nav_history"),    4, "history"),
-            (_("nav_settings"),   5, "settings"),
+            (_("nav_stats"),      5, "stats"),
+            (_("nav_settings"),   6, "settings"),
         ]
 
         self._nav_buttons = []
@@ -276,6 +278,7 @@ class MyDLPApp(ctk.CTk):
             LyricsTab(self.content, colors=COLORS),
             ConverterTab(self.content, colors=COLORS),
             HistoryTab(self.content, colors=COLORS),
+            StatsTab(self.content, colors=COLORS),
             SettingsTab(self.content, colors=COLORS, refresh_callback=self._on_settings_saved),
         ]
         for tab in self._tabs:
@@ -285,8 +288,8 @@ class MyDLPApp(ctk.CTk):
         """Bind keyboard shortcuts."""
         # Ctrl+D = Go to Download tab
         self.bind("<Control-d>", lambda e: self._select_tab(0))
-        # Ctrl+1-6 = Switch tabs
-        for i in range(6):
+        # Ctrl+1-7 = Switch tabs
+        for i in range(7):
             self.bind(f"<Control-Key-{i+1}>", lambda e, idx=i: self._select_tab(idx))
         # Ctrl+V = Paste into downloader textbox and fetch
         self.bind("<Control-v>", lambda e: self._quick_paste())
@@ -345,7 +348,7 @@ class MyDLPApp(ctk.CTk):
 
         self.title(_("app_name"))
         self._build_ui()
-        self._select_tab(5)  # Stay on the Settings tab (now index 5)
+        self._select_tab(6)  # Stay on the Settings tab
 
     def _destroy_tabs(self):
         """Best-effort cleanup of tab instances before rebuilding the UI."""
@@ -455,10 +458,16 @@ class MyDLPApp(ctk.CTk):
         if not _HAS_PYSTRAY:
             return
 
-        # Try to build a 64x64 icon from assets/icon.ico, falling back to a
-        # solid-colour generated image if the file isn't accessible.
+        # Try to build a 64x64 icon, falling back to a solid-colour
+        # generated image if no file is accessible.
         try:
-            icon_img = _PILImage.open("assets/icon.ico").convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
+            icon_path = self._find_asset("icon.png")
+            if not icon_path:
+                icon_path = self._find_asset("icon.ico")
+            if icon_path:
+                icon_img = _PILImage.open(icon_path).convert("RGBA").resize((64, 64), _PILImage.LANCZOS)
+            else:
+                icon_img = _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
         except Exception:
             icon_img = _PILImage.new("RGBA", (64, 64), (139, 92, 246, 255))
 
@@ -467,7 +476,7 @@ class MyDLPApp(ctk.CTk):
             pystray.MenuItem(_("tray_hide"), self._tray_hide),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(_("tray_check_update"), lambda: self._check_for_updates_silent(force=True)),
-            pystray.MenuItem(_("nav_settings"), lambda: self._select_tab(5)),
+            pystray.MenuItem(_("nav_settings"), lambda: self._select_tab(6)),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(_("tray_quit"), self._tray_quit),
         )

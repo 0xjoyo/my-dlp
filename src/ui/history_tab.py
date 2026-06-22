@@ -1,5 +1,5 @@
 """
-History Tab — View previous downloads
+History Tab — View and search previous downloads
 """
 import os
 import subprocess
@@ -8,6 +8,7 @@ import customtkinter as ctk
 from src.utils.history_manager import load_history, clear_history
 from src.utils.i18n import _
 
+
 class HistoryTab(ctk.CTkFrame):
     def __init__(self, parent, colors: dict):
         super().__init__(parent, fg_color=colors["bg_dark"], corner_radius=0)
@@ -15,16 +16,18 @@ class HistoryTab(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
+        self._all_history = []  # full unfiltered list
+
         self._build_header()
         self.scroll = ctk.CTkScrollableFrame(self, fg_color=self.colors["bg_dark"], corner_radius=0)
         self.scroll.grid(row=1, column=0, sticky="nsew")
         self.scroll.grid_columnconfigure(0, weight=1)
-        
+
         self.bind("<Visibility>", lambda e: self._refresh_history())
         self._refresh_history()
 
     def _build_header(self):
-        header = ctk.CTkFrame(self, fg_color=self.colors["sidebar_bg"], corner_radius=0, height=90)
+        header = ctk.CTkFrame(self, fg_color=self.colors["sidebar_bg"], corner_radius=0, height=130)
         header.grid(row=0, column=0, sticky="ew")
         header.grid_columnconfigure(0, weight=1)
         header.grid_propagate(False)
@@ -37,31 +40,91 @@ class HistoryTab(ctk.CTkFrame):
         subtitle = ctk.CTkLabel(header, text=_("hist_subtitle"),
                                 font=ctk.CTkFont("Segoe UI", 13),
                                 text_color=self.colors["text_secondary"])
-        subtitle.grid(row=1, column=0, padx=36, pady=(4, 16), sticky="w")
-        
-        clear_btn = ctk.CTkButton(header, text=_("btn_clear_hist"), width=120, height=40,
-                                  corner_radius=10, fg_color=self.colors["error"],
-                                  font=ctk.CTkFont("Segoe UI", 13, "bold"),
-                                  command=self._on_clear)
-        clear_btn.grid(row=0, column=1, rowspan=2, padx=36, sticky="e")
+        subtitle.grid(row=1, column=0, padx=36, pady=(2, 8), sticky="w")
+
+        # ── Search bar + filter row ──
+        search_row = ctk.CTkFrame(header, fg_color="transparent")
+        search_row.grid(row=2, column=0, sticky="ew", padx=36, pady=(0, 16))
+        search_row.grid_columnconfigure(0, weight=1)
+
+        self.search_var = ctk.StringVar()
+        self.search_var.trace_add("write", lambda *a: self._apply_filter())
+        search_entry = ctk.CTkEntry(
+            search_row, textvariable=self.search_var,
+            placeholder_text=_("hist_search_ph"),
+            height=38, corner_radius=10,
+            font=ctk.CTkFont("Segoe UI", 13),
+            fg_color=self.colors["bg_dark"],
+            border_color=self.colors["border"],
+            text_color=self.colors["text_primary"],
+        )
+        search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+
+        self.mode_filter_var = ctk.StringVar(value=_("hist_all"))
+        mode_menu = ctk.CTkOptionMenu(
+            search_row, variable=self.mode_filter_var,
+            values=[_("hist_all"), _("opt_video"), _("opt_audio")],
+            height=38, corner_radius=10,
+            fg_color=self.colors["bg_dark"],
+            button_color=self.colors["accent"],
+            font=ctk.CTkFont("Segoe UI", 13),
+            command=lambda c: self._apply_filter(),
+        )
+        mode_menu.grid(row=0, column=1, padx=(0, 12))
+
+        clear_btn = ctk.CTkButton(
+            search_row, text=_("btn_clear_hist"), width=120, height=38,
+            corner_radius=10, fg_color=self.colors["error"],
+            font=ctk.CTkFont("Segoe UI", 13, "bold"),
+            command=self._on_clear,
+        )
+        clear_btn.grid(row=0, column=2)
+
+    def _apply_filter(self):
+        """Filter displayed history by search text + mode."""
+        query = self.search_var.get().strip().lower()
+        mode_filter = self.mode_filter_var.get()
+
+        filtered = []
+        for item in self._all_history:
+            title = (item.get("title") or "").lower()
+            url = (item.get("url") or "").lower()
+            # Text search
+            if query and query not in title and query not in url:
+                continue
+            # Mode filter
+            if mode_filter != _("hist_all"):
+                item_mode = item.get("mode", "")
+                if mode_filter == _("opt_video") and item_mode != "video":
+                    continue
+                if mode_filter == _("opt_audio") and item_mode != "audio":
+                    continue
+            filtered.append(item)
+
+        self._render_items(filtered)
 
     def _refresh_history(self):
+        self._all_history = load_history() or []
+        # Reset filter when refreshing
+        self.mode_filter_var.set(_("hist_all"))
+        self.search_var.set("")
+        self._apply_filter()
+
+    def _render_items(self, items):
         for widget in self.scroll.winfo_children():
             widget.destroy()
 
-        history = load_history()
-        
-        if not history:
+        if not items:
             lbl = ctk.CTkLabel(self.scroll, text=_("hist_empty"),
                                font=ctk.CTkFont("Segoe UI", 16),
                                text_color=self.colors["text_secondary"])
             lbl.grid(row=0, column=0, pady=50)
             return
 
-        for i, item in enumerate(history):
+        for i, item in enumerate(items):
             card = ctk.CTkFrame(self.scroll, fg_color=self.colors["card_bg"], corner_radius=16,
                                 border_width=1, border_color=self.colors["border"])
-            card.grid(row=i, column=0, padx=36, pady=(16 if i==0 else 8, 8), sticky="ew")
+            card.grid(row=i, column=0, padx=36, pady=(16 if i == 0 else 8, 8), sticky="ew")
             card.grid_columnconfigure(1, weight=1)
 
             icon = "🎬" if item.get("mode") == "video" else "🎵"
@@ -70,11 +133,11 @@ class HistoryTab(ctk.CTkFrame):
             info_frame = ctk.CTkFrame(card, fg_color="transparent")
             info_frame.grid(row=0, column=1, sticky="w", pady=12)
 
-            ctk.CTkLabel(info_frame, text=item.get("title", "Unknown"), 
+            ctk.CTkLabel(info_frame, text=item.get("title", "Unknown"),
                          font=ctk.CTkFont("Segoe UI", 15, "bold"),
                          text_color=self.colors["text_primary"]).pack(anchor="w")
-            
-            ctk.CTkLabel(info_frame, text=item.get("date", ""), 
+
+            ctk.CTkLabel(info_frame, text=item.get("date", ""),
                          font=ctk.CTkFont("Segoe UI", 12),
                          text_color=self.colors["text_secondary"]).pack(anchor="w")
 
@@ -89,18 +152,15 @@ class HistoryTab(ctk.CTkFrame):
         self._refresh_history()
 
     def _open_path(self, path: str):
-        if not path: return
-        
-        # Open containing folder and select file if possible
+        if not path:
+            return
         if os.name == 'nt':
             if os.path.exists(path):
-                # If path is a specific file, open explorer with file selected
                 if os.path.isfile(path):
                     subprocess.Popen(f'explorer /select,"{path}"')
                 else:
                     os.startfile(path)
             else:
-                # Fallback to dir if file not found
                 dir_path = os.path.dirname(path)
                 if os.path.exists(dir_path):
                     os.startfile(dir_path)

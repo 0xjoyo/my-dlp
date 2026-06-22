@@ -9,6 +9,7 @@ import yt_dlp
 from src.utils.config_manager import load_config
 from src.utils.helpers import sanitize_filename
 from src.utils.history_manager import add_to_history
+from src.core.notifier import notify
 
 class DownloadTask:
     def __init__(self, url: str, mode: str, quality: str, output_dir: str,
@@ -29,9 +30,7 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
     """Build yt-dlp options based on task parameters."""
     ffmpeg_path = config.get("ffmpeg_path", "")
 
-    outtmpl = os.path.join(task.output_dir, "%(playlist_index)s - %(title)s.%(ext)s"
-                           if "playlist" in task.url.lower() or "album" in task.url.lower()
-                           else "%(title)s.%(ext)s")
+    outtmpl = os.path.join(task.output_dir, config.get("filename_template", "%(title)s.%(ext)s"))
 
     opts = {
         "outtmpl": outtmpl,
@@ -182,6 +181,12 @@ def download(task: DownloadTask):
                 # Add to History
                 if final_filename:
                     add_to_history(title, task.url, final_filename, task.mode)
+
+                # Desktop notification
+                notify(
+                    title if task.mode == "video" else "🎵 Download complete",
+                    f"{title[:80]}" if len(title) > 80 else title,
+                )
 
             if task.done_callback and not task.cancelled:
                 task.done_callback()

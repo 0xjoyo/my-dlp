@@ -2,6 +2,23 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.2] - 2026-06-22
+
+### Added
+- **[Stats tab]** Statistics page with total downloads count, video/audio
+  breakdown, storage usage, and recent downloads list.
+- **[History search]** Search/filter by title and mode (video/audio) in the
+  download history tab.
+- **[Desktop notification]** Native toast notification on Windows when a
+  download completes.
+- **[Filename template]** Customisable output filename template in Settings
+  (%(title)s, %(uploader)s, %(id)s, %(ext)s).
+- **[Tray icon fix]** System-tray icon now probes _MEIPASS paths correctly
+  for frozen (PyInstaller) builds.
+
+### Changed
+- **Sidebar**: Statistics tab added between History and Settings (Ctrl+6).
+
 ## [1.3.1] - 2026-06-21
 
 ### Added
