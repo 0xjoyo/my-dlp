@@ -109,6 +109,7 @@ class MyDLPApp(ctk.CTk):
         self._tray_icon = None             # pystray.Icon instance
         self._is_quitting = False          # True only when user picks Quit
         self.protocol("WM_DELETE_WINDOW", self._on_close_requested)
+        self._clip_monitor = None
 
         self._build_ui()
         self._select_tab(0)
