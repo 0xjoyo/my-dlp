@@ -80,7 +80,7 @@ class HistoryTab(ctk.CTkFrame):
         )
         clear_btn.grid(row=0, column=2)
 
-        export_btn = ctk.CTkButton(filter_row, text=_("btn_export_csv"), width=120, height=36,
+        export_btn = ctk.CTkButton(search_row, text=_("btn_export_csv"), width=120, height=36,
                                    corner_radius=8, fg_color=self.colors["border"],
                                    hover_color=self.colors["accent"],
                                    command=self._export_csv)
