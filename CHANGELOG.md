@@ -2,6 +2,24 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.4] - 2026-06-22
+
+### Added
+- **[Accent color picker]** Choose from 8 preset accent colours (Purple, Blue,
+  Emerald, Amber, Red, Cyan, Pink, Lime) in Appearance settings — applies
+  instantly.
+- **[Subtitle download]** New checkbox in Download settings downloads
+  English / Arabic / auto-generated subtitles with each video.
+- **[Clipboard monitor]** Opt-in setting watches the clipboard for YouTube
+  URLs and pastes them into the downloader automatically (off by default —
+  no background overhead unless enabled).
+- **[Context menu integration]** `install_context_menu.reg` adds "Download
+  with my-dlp" to the Windows right-click menu for URLs and folders.
+
+### Fixed
+- **[COLORS refactor]** Accent colour is now read from `config.json` at
+  startup and persists across rebuilds.
+
 ## [1.3.3] - 2026-06-22
 
 ### Added

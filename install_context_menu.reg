@@ -1,0 +1,33 @@
+Windows Registry Editor Version 5.00
+
+; my-dlp — Context menu integration
+; Run this file to add "Download with my-dlp" to the right-click menu
+; of YouTube URLs, and to the background of the desktop/Folder.
+;
+; To remove: delete the key
+;   HKEY_CLASSES_ROOT\*\shell\Download with my-dlp
+;   HKEY_CLASSES_ROOT\Directory\Background\shell\Download with my-dlp
+;   HKEY_CLASSES_ROOT\Directory\shell\Download with my-dlp
+
+[HKEY_CLASSES_ROOT\*\shell\Download with my-dlp]
+@="Download with &my-dlp"
+"Icon"="\"C:\\Program Files\\my-dlp\\my-dlp.exe\""
+
+[HKEY_CLASSES_ROOT\*\shell\Download with my-dlp\command]
+@="\"C:\\Program Files\\my-dlp\\my-dlp.exe\" --download \"%1\""
+
+; URL protocol handler — catch youtube:// and similar links
+
+[HKEY_CLASSES_ROOT\my-dlp]
+@="URL:my-dlp Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\my-dlp\DefaultIcon]
+@="\"C:\\Program Files\\my-dlp\\my-dlp.exe\",1"
+
+[HKEY_CLASSES_ROOT\my-dlp\shell]
+
+[HKEY_CLASSES_ROOT\my-dlp\shell\open]
+
+[HKEY_CLASSES_ROOT\my-dlp\shell\open\command]
+@="\"C:\\Program Files\\my-dlp\\my-dlp.exe\" \"%1\""

@@ -84,6 +84,14 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
         opts["format"] = quality_map.get(task.quality, quality_map["1080p"])
         opts["merge_output_format"] = fmt
 
+    # ── Subtitle download ──
+    if config.get("subtitle_download", False):
+        opts.setdefault("writesubtitles", True)
+        opts.setdefault("writeautomaticsub", True)
+        opts.setdefault("subtitleslangs", ["en", "ar", "auto"])
+        opts.setdefault("subtitlesformat", "srt")
+        opts.setdefault("embedsubs", False)
+
     return opts
 
 

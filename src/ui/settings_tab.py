@@ -160,6 +160,20 @@ class SettingsTab(ctk.CTkFrame):
                      text_color=self.colors["text_secondary"]
                      ).grid(row=1, column=0, sticky="w", pady=(4, 0))
 
+        # ── Clipboard monitor ──
+        self.clip_var = ctk.BooleanVar(value=self._config.get("clipboard_monitor", False))
+        ctk.CTkCheckBox(dl_card, text=_("set_clip"), variable=self.clip_var,
+                        font=ctk.CTkFont("Segoe UI", 13),
+                        fg_color=self.colors["accent"],
+                        ).grid(row=16, column=0, sticky="w", padx=24, pady=(0, 24))
+
+        # ── Subtitle download ──
+        self.sub_var = ctk.BooleanVar(value=self._config.get("subtitle_download", False))
+        ctk.CTkCheckBox(dl_card, text=_("set_sub"), variable=self.sub_var,
+                        font=ctk.CTkFont("Segoe UI", 13),
+                        fg_color=self.colors["accent"],
+                        ).grid(row=15, column=0, sticky="w", padx=24, pady=(0, 24))
+
         # ── Spotify Settings ──────────────────────────────────────────
         sp_card = self._card(scroll, _("card_sp_set"))
         sp_card.grid(row=1, column=0, padx=36, pady=16, sticky="ew")
@@ -206,6 +220,7 @@ class SettingsTab(ctk.CTkFrame):
         # ── Appearance & Language ─────────────────────────────────────
         app_card = self._card(scroll, _("card_app_set"))
         app_card.grid(row=3, column=0, padx=36, pady=16, sticky="ew")
+        app_card.grid_columnconfigure((0, 1), weight=1)
 
         self._setting_row(app_card, 1, _("set_lang"))
         self.lang_var = ctk.StringVar(value="ar" if self._config.get("language", "ar") == "ar" else "en")
@@ -218,10 +233,10 @@ class SettingsTab(ctk.CTkFrame):
 
         curr_lang_text = _("lang_ar") if self.lang_var.get() == "ar" else _("lang_en")
         lang_menu = ctk.CTkOptionMenu(app_card, values=[_("lang_ar"), _("lang_en")],
-                           height=40, corner_radius=10,
-                           fg_color=self.colors["bg_dark"], button_color=self.colors["accent"],
-                           font=ctk.CTkFont("Segoe UI", 13),
-                           command=_set_lang_var)
+                          height=40, corner_radius=10,
+                          fg_color=self.colors["bg_dark"], button_color=self.colors["accent"],
+                          font=ctk.CTkFont("Segoe UI", 13),
+                          command=_set_lang_var)
         lang_menu.set(curr_lang_text)
         lang_menu.grid(row=2, column=0, sticky="w", padx=24, pady=(0, 16))
 
@@ -232,7 +247,25 @@ class SettingsTab(ctk.CTkFrame):
                                 font=ctk.CTkFont("Segoe UI", 13),
                                 fg_color=self.colors["bg_dark"],
                                 selected_color=self.colors["accent"],
-                                ).grid(row=4, column=0, sticky="w", padx=24, pady=(0, 24))
+                                ).grid(row=4, column=0, sticky="w", padx=24, pady=(0, 12))
+
+        # ── Accent color picker ──
+        self._setting_row(app_card, 5, _("set_accent"))
+        accent_row = ctk.CTkFrame(app_card, fg_color="transparent")
+        accent_row.grid(row=6, column=0, sticky="w", padx=24, pady=(0, 24))
+        current_accent = self._config.get("accent", "#8B5CF6")
+        ACCENTS = [
+            ("#8B5CF6", "Purple"), ("#3B82F6", "Blue"), ("#10B981", "Emerald"),
+            ("#F59E0B", "Amber"), ("#EF4444", "Red"), ("#06B6D4", "Cyan"),
+            ("#EC4899", "Pink"), ("#84CC16", "Lime")]
+        for i, (hex_clr, name) in enumerate(ACCENTS):
+            btn = ctk.CTkButton(accent_row, text="", width=32, height=32,
+                                corner_radius=16, fg_color=hex_clr,
+                                hover_color=hex_clr,
+                                border_width=2,
+                                border_color=self.colors["accent"] if hex_clr == current_accent else "#444",
+                                command=lambda h=hex_clr: self._set_accent(h, accent_row))
+            btn.grid(row=0, column=i, padx=4)
 
         # ── Maintenance ───────────────────────────────────────────────
         maint_card = self._card(scroll, _("card_maintenance") if _("card_maintenance") != "card_maintenance" else "Maintenance")
@@ -331,6 +364,14 @@ class SettingsTab(ctk.CTkFrame):
 
     # ── save ──────────────────────────────────────────────────────────
 
+    def _set_accent(self, hex_clr: str, accent_row):
+        """Save accent colour immediately and rebuild UI."""
+        config = load_config()
+        config["accent"] = hex_clr
+        save_config(config)
+        if self.refresh_callback:
+            self.refresh_callback()
+
     def _save(self):
         config = load_config()
         config["download_path"] = self.dl_path_var.get().strip()
@@ -339,6 +380,7 @@ class SettingsTab(ctk.CTkFrame):
         config["ffmpeg_path"] = self.ffmpeg_var.get().strip()
         config["embed_thumbnail"] = self.embed_thumb_var.get()
         config["embed_lyrics"] = self.embed_lyrics_var.get()
+        config["subtitle_download"] = self.sub_var.get()
         config["spotify_client_id"] = self.sp_id_var.get().strip()
         config["spotify_client_secret"] = self.sp_secret_var.get().strip()
         config["lyrics_provider"] = self.lyrics_prov_var.get()
@@ -354,6 +396,7 @@ class SettingsTab(ctk.CTkFrame):
         # Filename template
         fn_tpl = self.fn_template_var.get().strip()
         config["filename_template"] = fn_tpl if fn_tpl else "%(title)s.%(ext)s"
+        config["clipboard_monitor"] = self.clip_var.get()
 
         if save_config(config):
             self.save_status.configure(text=_("msg_saved"), text_color=self.colors["success"])

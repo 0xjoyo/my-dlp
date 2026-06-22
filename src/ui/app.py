@@ -28,7 +28,7 @@ from src.ui.history_tab import HistoryTab
 from src.ui.stats_tab import StatsTab
 from src.ui.settings_tab import SettingsTab
 from src.ui.update_dialog import UpdateDialog
-from src.utils.config_manager import load_config
+from src.utils.config_manager import load_config, save_config
 from src.utils.i18n import _
 from src.core import updater
 
@@ -46,7 +46,7 @@ COLORS = {
     "bg_dark":       "#09090B",  # Zinc 950
     "sidebar_bg":    "#18181B",  # Zinc 900
     "card_bg":       "#121214",
-    "accent":        "#8B5CF6",  # Vibrant Violet
+    "accent":        load_config().get("accent", "#8B5CF6"),  # Vibrant Violet
     "accent_hover":  "#A78BFA",
     "accent2":       "#38BDF8",  # Sky blue
     "success":       "#22C55E",
@@ -113,6 +113,7 @@ class MyDLPApp(ctk.CTk):
         self._build_ui()
         self._select_tab(0)
         self._bind_shortcuts()
+        self._start_clip_monitor()
 
         # Check for updates after the UI is up (don't block startup)
         self.after(1500, self._check_for_updates_silent)
@@ -351,7 +352,8 @@ class MyDLPApp(ctk.CTk):
 
         self.title(_("app_name"))
         self._build_ui()
-        self._select_tab(6)  # Stay on the Settings tab
+        self._start_clip_monitor()
+        self._select_tab(6)
 
     def _destroy_tabs(self):
         """Best-effort cleanup of tab instances before rebuilding the UI."""
@@ -359,8 +361,6 @@ class MyDLPApp(ctk.CTk):
             return
         for tab in self._tabs:
             try:
-                # LyricsTab holds an AudioPlayer that wraps a VLC instance;
-                # release it explicitly to free the libvlc handle.
                 player = getattr(tab, "player", None)
                 if player is not None and hasattr(player, "cleanup"):
                     try:
@@ -370,6 +370,45 @@ class MyDLPApp(ctk.CTk):
                 tab.destroy()
             except Exception:
                 pass
+
+    # ── Clipboard monitor ──────────────────────────────────────────
+
+    def _start_clip_monitor(self):
+        """Start clipboard monitor if enabled in config."""
+        from src.core.clipboard_monitor import ClipboardMonitor
+        config = load_config()
+        if not config.get("clipboard_monitor", False):
+            self._clip_monitor = None
+            return
+        if self._clip_monitor is not None:
+            return  # already running
+        self._clip_monitor = ClipboardMonitor(
+            root=self,
+            on_url=self._on_clip_url,
+        )
+        self._clip_monitor.start()
+
+    def _stop_clip_monitor(self):
+        if self._clip_monitor:
+            self._clip_monitor.stop()
+            self._clip_monitor = None
+
+    def _on_clip_url(self, url: str):
+        """Called when clipboard monitor detects a YouTube URL."""
+        from src.core.notifier import notify
+        # Paste URL into downloader tab
+        self._select_tab(0)
+        dl_tab = self._tabs[0]
+        try:
+            current = dl_tab.url_textbox.get("1.0", "end-1c").strip()
+            dl_tab.url_textbox.delete("1.0", "end")
+            if current:
+                dl_tab.url_textbox.insert("1.0", f"{current}\n{url}")
+            else:
+                dl_tab.url_textbox.insert("1.0", url)
+        except Exception:
+            pass
+        notify("my-dlp", "YouTube URL detected — ready to download")
 
     # ── Update flow ──────────────────────────────────────────────────
 

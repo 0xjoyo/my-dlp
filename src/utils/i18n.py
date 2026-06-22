@@ -120,6 +120,9 @@ TRANSLATIONS = {
     
     "card_app_set": {"ar": "🎨  المظهر واللغة", "en": "🎨  Appearance & Language"},
     "set_theme": {"ar": "وضع المظهر", "en": "Appearance Mode"},
+    "set_accent": {"ar": "لون التمييز:", "en": "Accent Color:"},
+    "set_sub":   {"ar": "📜  تحميل الترجمة مع الفيديو", "en": "📜  Download subtitles with video"},
+    "set_clip":  {"ar": "📋  مراقبة الحافظة لروابط يوتيوب", "en": "📋  Watch clipboard for YouTube URLs"},
     "set_lang": {"ar": "لغة واجهة البرنامج", "en": "Interface Language"},
     "lang_ar": {"ar": "العربية", "en": "Arabic"},
     "lang_en": {"ar": "English", "en": "English"},
