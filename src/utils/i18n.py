@@ -150,9 +150,23 @@ TRANSLATIONS = {
     # ── Presets ──
     "card_presets":    {"ar": "⚡  إعدادات سريعة", "en": "⚡  Quick Presets"},
     "preset_mp3":      {"ar": "🎵 MP3", "en": "🎵 MP3"},
-    "preset_hd":       {"ar": "🎬 HD فيديو", "en": "🎬 HD Video"},
-    "preset_4k":       {"ar": "📺 4K", "en": "📺 4K"},
-    "preset_best_audio": {"ar": "🎧 صوت عالي", "en": "🎧 High Quality Audio"},
+    "preset_hd":       {"ar": "🎬 HD", "en": "🎬 HD"},
+    "preset_4k":       {"ar": "🎬 4K", "en": "🎬 4K"},
+    "preset_best_audio":{"ar": "🎧 أقصى جودة صوت", "en": "🎧 Hi-Q Audio"},
+
+    # ── Search ──
+    "dl_search":         {"ar": "بحث", "en": "Search"},
+    "dl_search_ph":      {"ar": "ابحث في يوتيوب…", "en": "Search YouTube…"},
+    "dl_search_results": {"ar": "نتائج البحث", "en": "Search Results"},
+    "dl_search_paste":   {"ar": "اختيار", "en": "Select"},
+    "msg_searching":     {"ar": "جاري البحث…", "en": "Searching…"},
+    "err_no_results":    {"ar": "لا توجد نتائج", "en": "No results found"},
+
+    # ── Playlist browser ──
+    "dl_pl_title":    {"ar": "متصفح قائمة التشغيل", "en": "Playlist Browser"},
+    "dl_pl_count":    {"ar": "{count} فيديو في القائمة", "en": "{count} videos in playlist"},
+    "dl_pl_sel_all":  {"ar": "اختيار الكل", "en": "Select All"},
+    "dl_pl_unsel_all":{"ar": "إلغاء الكل", "en": "Deselect All"},
 
     # ── Duplicate Check ──
     "dup_title": {"ar": "⚠️  ملف موجود", "en": "⚠️  File Exists"},

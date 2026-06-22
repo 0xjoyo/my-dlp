@@ -2,6 +2,16 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.6] - 2026-06-22
+
+### Added
+- **[Search YouTube]** New search bar in the downloader header – type a
+  query, hit Enter / click Search, browse up to 8 results, and paste any
+  result's URL into the downloader with one click.
+- **[Playlist browser]** When a playlist URL is fetched, a popup shows all
+  videos with checkboxes. Select/deselect individual videos and download
+  only the ones you want.
+
 ## [1.3.5] - 2026-06-22
 
 ### Fixed

@@ -134,3 +134,41 @@ def fetch_thumbnail_bytes(url: str) -> Optional[bytes]:
     except Exception:
         pass
     return None
+
+
+def search_youtube(query: str, max_results: int = 8,
+                   callback: Callable = None, error_callback: Callable = None):
+    """Search YouTube using ytsearch: and return results."""
+    def _run():
+        try:
+            opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "skip_download": True,
+                "extract_flat": True,
+            }
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
+
+            entries = info.get("entries", [])
+            results = []
+            for e in entries:
+                if not e:
+                    continue
+                results.append({
+                    "title": e.get("title", "Unknown"),
+                    "duration_raw": e.get("duration", 0),
+                    "duration": format_duration(e.get("duration", 0)),
+                    "uploader": e.get("uploader", e.get("channel", "Unknown")),
+                    "views": format_views(e.get("view_count", 0)),
+                    "url": e.get("url") or e.get("webpage_url", ""),
+                    "thumbnail": e.get("thumbnail", ""),
+                    "upload_date": e.get("upload_date", ""),
+                })
+            if callback:
+                callback(results)
+        except Exception as e:
+            if error_callback:
+                error_callback(str(e))
+
+    threading.Thread(target=_run, daemon=True).start()

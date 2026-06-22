@@ -44,6 +44,32 @@ class DownloaderTab(ctk.CTkFrame):
                                  text_color=self.colors["text_secondary"])
         subtitle.grid(row=1, column=0, padx=36, pady=(4, 16), sticky="w")
 
+        # ── Search bar ──
+        search_row = ctk.CTkFrame(header, fg_color="transparent")
+        search_row.grid(row=0, column=1, rowspan=2, padx=(0, 36), sticky="se")
+        search_row.grid_columnconfigure(0, weight=1)
+
+        self.search_var = ctk.StringVar()
+        self.search_var.trace_add("write", lambda *a: self._on_search_typing())
+        self.search_entry = ctk.CTkEntry(
+            search_row, textvariable=self.search_var,
+            placeholder_text=_("dl_search_ph"),
+            width=260, height=36, corner_radius=18,
+            font=ctk.CTkFont("Segoe UI", 13),
+            fg_color=self.colors["bg_dark"],
+            border_color=self.colors["border"],
+            text_color=self.colors["text_primary"],
+        )
+        self.search_entry.grid(row=0, column=0, sticky="e", padx=(0, 6))
+        self.search_entry.bind("<Return>", lambda e: self._run_search())
+
+        ctk.CTkButton(search_row, text=_("dl_search"), width=70, height=36,
+                      corner_radius=18, fg_color=self.colors["accent"],
+                      hover_color=self.colors["accent_hover"],
+                      font=ctk.CTkFont("Segoe UI", 12, "bold"),
+                      command=self._run_search
+                      ).grid(row=0, column=1)
+
     def _build_body(self):
         scroll = ctk.CTkScrollableFrame(self, fg_color=self.colors["bg_dark"], corner_radius=0)
         scroll.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
@@ -310,8 +336,9 @@ class DownloaderTab(ctk.CTkFrame):
 
         if info["type"] == "playlist":
             self.vid_title.configure(text=f"📋 {info['title']}")
-            self.vid_meta.configure(text="")
+            self.vid_meta.configure(text=_("dl_pl_count").format(count=info['count']))
             self.tag_frame.grid_remove()
+            self.after(100, lambda: self._show_playlist_browser(info))
         else:
             self.vid_title.configure(text=info["title"])
             self.vid_meta.configure(text=f"⏱ {info['duration']}   👁 {info['view_count']} " + _("lbl_views"))
@@ -348,6 +375,149 @@ class DownloaderTab(ctk.CTkFrame):
 
     def _on_fetch_error(self, error: str):
         self.fetch_status.configure(text=f"❌ {error[:80]}", text_color=self.colors["error"])
+
+    # ── Search YouTube ───────────────────────────────────────────
+
+    def _on_search_typing(self):
+        """Placeholder for debounced search (future)."""
+        pass
+
+    def _run_search(self, event=None):
+        query = self.search_var.get().strip()
+        if len(query) < 2:
+            return
+        from src.core.info_fetcher import search_youtube
+        self.fetch_status.configure(text=_("msg_searching"), text_color=self.colors["text_secondary"])
+        search_youtube(query, max_results=8,
+                       callback=lambda r: self.after(0, lambda: self._show_search_results(r)),
+                       error_callback=lambda e: self.after(0, lambda: self.fetch_status.configure(
+                           text=f"❌ {e[:60]}", text_color=self.colors["error"])))
+
+    def _show_search_results(self, results: list):
+        if not results:
+            self.fetch_status.configure(text=_("err_no_results"), text_color=self.colors["error"])
+            return
+        self.fetch_status.configure(text=f"🔍 {len(results)} results", text_color=self.colors["success"])
+
+        win = ctk.CTkToplevel(self)
+        win.title(_("dl_search_results"))
+        win.geometry("620x500")
+        win.configure(fg_color=self.colors["bg_dark"])
+        win.transient(self)
+        win.grab_set()
+
+        ctk.CTkLabel(win, text=_("dl_search_results"), font=ctk.CTkFont("Segoe UI", 18, "bold"),
+                     text_color=self.colors["accent"]).pack(padx=24, pady=(20, 8), anchor="w")
+
+        scroll = ctk.CTkScrollableFrame(win, fg_color=self.colors["bg_dark"], corner_radius=0)
+        scroll.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        for i, r in enumerate(results):
+            card = ctk.CTkFrame(scroll, fg_color=self.colors["card_bg"], corner_radius=12,
+                                border_width=1, border_color=self.colors["border"])
+            card.grid(row=i, column=0, padx=12, pady=6, sticky="ew")
+            card.grid_columnconfigure(0, weight=1)
+
+            ctk.CTkLabel(card, text=f"🎬 {r['title'][:70]}",
+                         font=ctk.CTkFont("Segoe UI", 14, "bold"),
+                         text_color=self.colors["text_primary"]).grid(row=0, column=0, padx=16, pady=(12, 2), sticky="w")
+            ctk.CTkLabel(card, text=f"👤 {r['uploader'][:40]}  ⏱ {r['duration']}  👁 {r.get('views','')}",
+                         font=ctk.CTkFont("Segoe UI", 12),
+                         text_color=self.colors["text_secondary"]).grid(row=1, column=0, padx=16, pady=(0, 12), sticky="w")
+
+            ctk.CTkButton(card, text=_("dl_search_paste"), width=100, height=30, corner_radius=8,
+                          fg_color=self.colors["accent"], hover_color=self.colors["accent_hover"],
+                          font=ctk.CTkFont("Segoe UI", 12),
+                          command=lambda u=r["url"]: self._paste_search_url(u, win)
+                          ).grid(row=0, column=1, rowspan=2, padx=12, pady=8)
+
+    def _paste_search_url(self, url: str, win):
+        """Paste the selected search result URL into the textbox and close search."""
+        current = self.url_textbox.get("1.0", "end-1c").strip()
+        self.url_textbox.delete("1.0", "end")
+        if current:
+            self.url_textbox.insert("1.0", f"{current}\n{url}")
+        else:
+            self.url_textbox.insert("1.0", url)
+        win.destroy()
+
+    # ── Playlist browser ────────────────────────────────────────
+
+    def _show_playlist_browser(self, info: dict):
+        """Show playlist items with checkboxes for selective download."""
+        win = ctk.CTkToplevel(self)
+        win.title(_("dl_pl_title"))
+        win.geometry("640x520")
+        win.configure(fg_color=self.colors["bg_dark"])
+        win.transient(self)
+        win.grab_set()
+
+        # Header
+        ctk.CTkLabel(win, text=f"📋 {info['title']}",
+                     font=ctk.CTkFont("Segoe UI", 18, "bold"),
+                     text_color=self.colors["accent"]).pack(padx=24, pady=(20, 4), anchor="w")
+        ctk.CTkLabel(win, text=_("dl_pl_count").format(count=info['count']),
+                     font=ctk.CTkFont("Segoe UI", 12),
+                     text_color=self.colors["text_secondary"]).pack(padx=24, pady=(0, 12), anchor="w")
+
+        scroll = ctk.CTkScrollableFrame(win, fg_color=self.colors["bg_dark"], corner_radius=0)
+        scroll.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+
+        var_map = {}
+        entries = info.get("entries", [])
+        for i, e in enumerate(entries):
+            chk_row = ctk.CTkFrame(scroll, fg_color=self.colors["card_bg"], corner_radius=10)
+            chk_row.grid(row=i, column=0, padx=12, pady=4, sticky="ew")
+            chk_row.grid_columnconfigure(0, weight=1)
+
+            var = ctk.BooleanVar(value=True)
+            var_map[var] = e["url"]
+            ctk.CTkCheckBox(chk_row, text=f"{i+1}. {e['title'][:60]}", variable=var,
+                            font=ctk.CTkFont("Segoe UI", 13),
+                            fg_color=self.colors["accent"],
+                            text_color=self.colors["text_primary"]
+                            ).grid(row=0, column=0, padx=16, pady=10, sticky="w")
+            ctk.CTkLabel(chk_row, text=f"⏱ {e.get('duration','?')}",
+                         font=ctk.CTkFont("Segoe UI", 11),
+                         text_color=self.colors["text_secondary"]
+                         ).grid(row=0, column=1, padx=16)
+
+        btn_row = ctk.CTkFrame(win, fg_color="transparent")
+        btn_row.pack(padx=24, pady=(0, 16), fill="x")
+
+        ctk.CTkButton(btn_row, text=_("dl_pl_sel_all"), width=120, height=36, corner_radius=8,
+                      fg_color=self.colors["border"], hover_color=self.colors["accent"],
+                      command=lambda: self._toggle_all_checks(var_map, True)
+                      ).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(btn_row, text=_("dl_pl_unsel_all"), width=120, height=36, corner_radius=8,
+                      fg_color=self.colors["border"], hover_color=self.colors["accent"],
+                      command=lambda: self._toggle_all_checks(var_map, False)
+                      ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(btn_row, text=_("btn_download"), width=140, height=40, corner_radius=10,
+                      fg_color=self.colors["accent"], hover_color=self.colors["accent_hover"],
+                      font=ctk.CTkFont("Segoe UI", 14, "bold"),
+                      command=lambda: self._download_selected(var_map, win)
+                      ).pack(side="right")
+
+    def _toggle_all_checks(self, var_map: dict, state: bool):
+        for var in var_map:
+            var.set(state)
+
+    def _download_selected(self, var_map: dict, win):
+        """Put selected playlist URLs into the textbox and close."""
+        selected = []
+        for var, url in var_map.items():
+            if var.get():
+                selected.append(url)
+        if not selected:
+            return
+        self.url_textbox.delete("1.0", "end")
+        self.url_textbox.insert("1.0", "\n".join(selected))
+        win.destroy()
+        self._on_fetch()
+
+    # ── Presets ──────────────────────────────────────────────────
 
     def _apply_preset(self, mode: str, quality: str):
         """Apply a download preset: switches mode + quality and starts fetch."""
