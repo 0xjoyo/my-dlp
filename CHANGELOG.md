@@ -2,6 +2,13 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.7] - 2026-06-22
+
+### Fixed
+- **[Clipboard monitor crash]** Fixed `AttributeError: '_tkinter.tkapp'
+  object has no attribute '_clip_monitor'` caused by accessing the attribute
+  before initialization.
+
 ## [1.3.6] - 2026-06-22
 
 ### Added
