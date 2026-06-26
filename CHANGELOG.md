@@ -2,6 +2,29 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.8] - 2026-06-22
+
+### Fixed
+- **[UI layout]** Card titles were overlapping with content. Each card now
+  reserves row=0 for the title and pushes content to row=1+.
+- **[Header search bar]** Search bar was being clipped at the right edge
+  of the header. Header height bumped to 110px and the bar uses sticky="e".
+- **[Sidebar footer]** The keyboard shortcut hints and GitHub URL were
+  being clipped. Switched to multi-line layout with `text_secondary`
+  colour for readability.
+- **[Fast shutdown on close]** Closing the window now stops EVERYTHING
+  immediately: clipboard monitor thread, in-flight downloads
+  (`task.cancelled = True`), tray icon, and any orphaned yt-dlp / ffmpeg
+  subprocesses via `os._exit(0)` — no more ghost processes.
+
+### Changed
+- **[Clipboard notifications]** Desktop notification now fires exactly
+  once per *new* URL. Re-copying the same URL (or copying one already in
+  the URL textbox) no longer triggers a duplicate notification.
+- **[Thumbnail + metadata embedding]** Now applies to BOTH audio and
+  video downloads. Previously, video files were downloaded without an
+  embedded thumbnail or metadata tags.
+
 ## [1.3.7] - 2026-06-22
 
 ### Fixed

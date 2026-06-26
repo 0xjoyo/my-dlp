@@ -29,9 +29,14 @@ class DownloaderTab(ctk.CTkFrame):
         self._build_body()
 
     def _build_header(self):
-        header = ctk.CTkFrame(self, fg_color=self.colors["sidebar_bg"], corner_radius=0, height=90)
+        # Header needs to fit title (24pt) + subtitle (13pt) + search bar (36px).
+        # 24 + ~20 + 13 + 16 + 8 + 36 + padding = ~120px, but we keep a single
+        # compact row by placing the search bar in column 1 with sticky="e"
+        # (right edge) and letting the title/subtitle sit vertically in column 0.
+        header = ctk.CTkFrame(self, fg_color=self.colors["sidebar_bg"], corner_radius=0, height=110)
         header.grid(row=0, column=0, sticky="ew")
-        header.grid_columnconfigure(0, weight=1)
+        header.grid_columnconfigure(0, weight=1)  # title/subtitle area
+        header.grid_columnconfigure(1, weight=0)  # search bar — fixed width
         header.grid_propagate(False)
 
         title = ctk.CTkLabel(header, text=_("dl_title"),
@@ -46,8 +51,8 @@ class DownloaderTab(ctk.CTkFrame):
 
         # ── Search bar ──
         search_row = ctk.CTkFrame(header, fg_color="transparent")
-        search_row.grid(row=0, column=1, rowspan=2, padx=(0, 36), sticky="se")
-        search_row.grid_columnconfigure(0, weight=1)
+        search_row.grid(row=0, column=1, rowspan=2, padx=(0, 36), sticky="e")
+        search_row.grid_columnconfigure(0, weight=0)
 
         self.search_var = ctk.StringVar()
         self.search_var.trace_add("write", lambda *a: self._on_search_typing())
@@ -81,10 +86,10 @@ class DownloaderTab(ctk.CTkFrame):
         url_card.grid_columnconfigure(0, weight=1)
 
         hint = ctk.CTkLabel(url_card, text=_("dl_batch_hint"), font=ctk.CTkFont("Segoe UI", 12), text_color=self.colors["text_secondary"])
-        hint.grid(row=0, column=0, sticky="w", padx=24, pady=(0, 4))
+        hint.grid(row=1, column=0, sticky="w", padx=24, pady=(0, 4))
 
         url_row = ctk.CTkFrame(url_card, fg_color="transparent")
-        url_row.grid(row=1, column=0, sticky="ew", padx=0, pady=(8, 0))
+        url_row.grid(row=2, column=0, sticky="ew", padx=0, pady=(8, 0))
         url_row.grid_columnconfigure(0, weight=1)
 
         self.url_textbox = ctk.CTkTextbox(
@@ -117,7 +122,7 @@ class DownloaderTab(ctk.CTkFrame):
                 font=ctk.CTkFont("Segoe UI", 11),
                 text_color=self.colors["accent2"],
             )
-            dnd_hint.grid(row=2, column=0, sticky="w", padx=24, pady=(4, 0))
+            dnd_hint.grid(row=3, column=0, sticky="w", padx=24, pady=(4, 0))
 
         btn_frame = ctk.CTkFrame(url_row, fg_color="transparent")
         btn_frame.grid(row=0, column=1)
@@ -133,7 +138,7 @@ class DownloaderTab(ctk.CTkFrame):
         fetch_btn.pack()
 
         self.fetch_status = ctk.CTkLabel(url_card, text="", font=ctk.CTkFont("Segoe UI", 12))
-        self.fetch_status.grid(row=2, column=0, sticky="w", pady=(8, 0))
+        self.fetch_status.grid(row=4, column=0, sticky="w", pady=(8, 0))
 
         # ── Download Presets ──
         presets = [(_("preset_mp3"), "audio", "192kbps"),
@@ -184,7 +189,7 @@ class DownloaderTab(ctk.CTkFrame):
 
         # ── Options Card ──
         opt_card = self._card(scroll, _("card_options"))
-        opt_card.grid(row=2, column=0, padx=36, pady=16, sticky="ew")
+        opt_card.grid(row=3, column=0, padx=36, pady=16, sticky="ew")
         opt_card.grid_columnconfigure((0, 1, 2), weight=1)
 
         mode_frame = ctk.CTkFrame(opt_card, fg_color="transparent")
@@ -234,10 +239,15 @@ class DownloaderTab(ctk.CTkFrame):
         self.dl_btn.grid(row=5, column=0, padx=36, pady=(12, 40), sticky="ew")
 
     def _card(self, parent, title: str) -> ctk.CTkFrame:
+        """Build a card frame. The title (if any) takes row=0.
+
+        Callers should place their own content starting at row=1 — using
+        row=0 would overlap with the title label.
+        """
         frame = ctk.CTkFrame(parent, fg_color=self.colors["card_bg"], corner_radius=16, border_width=1, border_color=self.colors["border"])
         frame.grid_columnconfigure(0, weight=1)
         if title:
-            ctk.CTkLabel(frame, text=title, font=ctk.CTkFont("Segoe UI", 15, "bold"), text_color=self.colors["accent"]).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 0))
+            ctk.CTkLabel(frame, text=title, font=ctk.CTkFont("Segoe UI", 15, "bold"), text_color=self.colors["accent"]).grid(row=0, column=0, sticky="w", padx=24, pady=(20, 12))
         return frame
 
     def _paste_url(self):
@@ -598,7 +608,9 @@ class DownloaderTab(ctk.CTkFrame):
             error_callback=lambda e: self.after(0, lambda: self._on_error(e)),
             metadata=meta
         )
-        downloader.download(task)
+        # Track the active task so the app can cancel it on shutdown
+        self.current_task = task
+        self._download_thread = downloader.download(task)
 
     def _on_progress(self, data: dict):
         status = data.get("status", "")

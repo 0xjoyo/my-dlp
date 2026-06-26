@@ -65,11 +65,6 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
             "preferredcodec": fmt,
             "preferredquality": bitrate,
         }]
-        if config.get("embed_thumbnail", True):
-            opts["postprocessors"].append({"key": "EmbedThumbnail"})
-            opts["writethumbnail"] = True
-        if config.get("embed_lyrics", True):
-            opts["postprocessors"].append({"key": "FFmpegMetadata", "add_metadata": True})
 
     else:  # video
         fmt = config.get("default_video_format", "mp4")
@@ -84,8 +79,17 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
         opts["format"] = quality_map.get(task.quality, quality_map["1080p"])
         opts["merge_output_format"] = fmt
 
+    # ── Thumbnail embedding (both audio & video) ──
+    if config.get("embed_thumbnail", True):
+        opts.setdefault("postprocessors", []).append({"key": "EmbedThumbnail"})
+        opts["writethumbnail"] = True
+
+    # ── Metadata embedding (both audio & video) ──
+    if config.get("embed_lyrics", True):
+        opts.setdefault("postprocessors", []).append({"key": "FFmpegMetadata", "add_metadata": True})
+
     # ── Subtitle download ──
-    if config.get("subtitle_download", False):
+    if config.get("subtitle_download", False) and task.mode == "video":
         opts.setdefault("writesubtitles", True)
         opts.setdefault("writeautomaticsub", True)
         opts.setdefault("subtitleslangs", ["en", "ar", "auto"])

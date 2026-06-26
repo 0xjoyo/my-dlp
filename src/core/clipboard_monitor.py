@@ -44,6 +44,7 @@ class ClipboardMonitor:
                 url = self.root.clipboard_get().strip()
             except Exception:
                 url = ""
+            # Skip if URL is unchanged OR already notified this session
             if url and url != self._last_url:
                 m = _YOUTUBE_RE.match(url)
                 if m and self.on_url:

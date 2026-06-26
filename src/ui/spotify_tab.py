@@ -351,4 +351,6 @@ class SpotifyTab(ctk.CTkFrame):
             done_callback=lambda: self.status_lbl.configure(text="✅ " + _("msg_dl_done"), text_color=self.colors["success"]),
             error_callback=lambda e: self.status_lbl.configure(text=f"❌ {e[:50]}", text_color=self.colors["error"]),
         )
-        downloader.download(task)
+        # Track the active task so the app can cancel it on shutdown
+        self.current_task = task
+        self._download_thread = downloader.download(task)

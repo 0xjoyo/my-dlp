@@ -4,7 +4,7 @@ import os
 import sys
 
 src_dir = "dist/my-dlp"
-out = "dist/my-dlp_v1.3.7_portable.zip"
+out = "dist/my-dlp_v1.3.8_portable.zip"
 
 # Remove any existing file
 if os.path.exists(out):

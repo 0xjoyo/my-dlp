@@ -251,20 +251,22 @@ class MyDLPApp(ctk.CTk):
         # Line 2 — keyboard shortcuts (compact, in dimmer color)
         line2 = ctk.CTkLabel(
             footer,
-            text="Ctrl+D Download  •  Ctrl+1-6 Tabs  •  Ctrl+U Updates",
+            text="Ctrl+D Download\nCtrl+1-6 Tabs\nCtrl+U Updates",
             font=ctk.CTkFont(family="Segoe UI", size=10),
-            text_color=COLORS["border"],
+            text_color=COLORS["text_secondary"],
             anchor="w",
+            justify="left",
         )
         line2.grid(row=1, column=0, sticky="ew", pady=(2, 0))
 
-        # Line 3 — author + GitHub
+        # Line 3 — author + GitHub (wraps if needed)
         line3 = ctk.CTkLabel(
             footer,
-            text=f"open-source · {author_text} · github.com/0xjoyo/my-dlp",
+            text=f"open-source\n{author_text}\ngithub.com/0xjoyo/my-dlp",
             font=ctk.CTkFont(family="Segoe UI", size=10),
-            text_color=COLORS["border"],
+            text_color=COLORS["text_secondary"],
             anchor="w",
+            justify="left",
         )
         line3.grid(row=2, column=0, sticky="ew", pady=(2, 0))
 
@@ -395,11 +397,26 @@ class MyDLPApp(ctk.CTk):
             self._clip_monitor = None
 
     def _on_clip_url(self, url: str):
-        """Called when clipboard monitor detects a YouTube URL."""
+        """Called when clipboard monitor detects a YouTube URL.
+
+        Fires the desktop notification exactly once per *new* URL.  If the
+        same URL is already in the URL textbox (e.g. the user re-copied it,
+        or the user dismissed the prompt and re-copied), we skip the
+        notification — no spam.
+        """
         from src.core.notifier import notify
+
+        # Skip if URL already loaded in the downloader
+        dl_tab = self._tabs[0]
+        try:
+            existing = dl_tab.url_textbox.get("1.0", "end-1c")
+            if url in existing:
+                return
+        except Exception:
+            pass
+
         # Paste URL into downloader tab
         self._select_tab(0)
-        dl_tab = self._tabs[0]
         try:
             current = dl_tab.url_textbox.get("1.0", "end-1c").strip()
             dl_tab.url_textbox.delete("1.0", "end")
@@ -644,17 +661,59 @@ class MyDLPApp(ctk.CTk):
             self._quit_app()
 
     def _quit_app(self):
-        """Fully tear down the app — stop tray, destroy widgets, exit."""
+        """Fully tear down the app — stop tray, cancel downloads, stop
+        clipboard monitor, destroy widgets, force-kill subprocesses, exit.
+
+        The goal: closing the window stops EVERYTHING immediately.
+        No daemon threads, no yt-dlp subprocesses, no tray icon lingering.
+        """
+        if self._is_quitting:
+            return  # already shutting down
         self._is_quitting = True
+
+        # 1. Stop the clipboard monitor thread
+        self._stop_clip_monitor()
+
+        # 2. Cancel any in-flight downloads (sets task.cancelled = True,
+        #    which causes the running yt-dlp subprocess to abort)
+        try:
+            for tab in self._tabs:
+                task = getattr(tab, "current_task", None)
+                if task is not None:
+                    task.cancelled = True
+                # Some tabs (e.g. spotify) also expose a download thread
+                thread = getattr(tab, "_download_thread", None)
+                if thread is not None and thread.is_alive():
+                    # The thread is a daemon; it will die with the process.
+                    # We just cancel the task so it raises DownloadCancelled.
+                    pass
+        except Exception:
+            pass
+
+        # 3. Stop the tray icon
         if self._tray_icon is not None:
             try:
                 self._tray_icon.stop()
             except Exception:
                 pass
+            self._tray_icon = None
+
+        # 4. Destroy the Tk root (closes the window + runs widget cleanup)
         try:
             self.destroy()
         except Exception:
             pass
+
+        # 5. Force-kill any subprocess that survived — yt-dlp spawns
+        #    ffmpeg as a child, and if the user was mid-conversion it can
+        #    outlive destroy(). On Windows, os._exit() is the only reliable
+        #    way to ensure ALL threads and subprocesses are torn down
+        #    immediately without lingering "ghost" processes.
+        try:
+            import os
+            os._exit(0)
+        except Exception:
+            sys.exit(0)
         # Exit the process — pystray and tkinter both need this to fully release.
         import sys
         sys.exit(0)

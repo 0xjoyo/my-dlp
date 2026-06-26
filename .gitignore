@@ -34,3 +34,7 @@ env/
 # OS junk
 Thumbs.db
 .DS_Store
+
+# Local UI smoke test artifacts (not part of the app)
+test_screenshot_*.png
+test_ui.py
