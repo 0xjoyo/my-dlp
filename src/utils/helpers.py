@@ -55,12 +55,55 @@ def format_views(count: int) -> str:
     return str(count)
 
 
+# Reserved device names on Windows that would silently fail to create
+# (e.g. "CON.txt" gets the same treatment as "CON").
+_WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+
 def sanitize_filename(name: str) -> str:
-    """Remove characters that are invalid in filenames."""
+    """Sanitize a string for use as a filename on Windows/macOS/Linux.
+
+    - Strips characters that are invalid on Windows (`\\ / : * ? " < > |`)
+    - Strips null bytes
+    - Replaces `..` (path traversal)
+    - Strips leading/trailing whitespace and dots
+    - Rejects reserved Windows device names (CON, PRN, ...)
+    - Truncates overly long names (255 bytes is the Windows max)
+    """
+    if name is None:
+        return ""
+    s = str(name)
+
+    # 1. Replace invalid characters
     invalid = r'\/:*?"<>|'
     for ch in invalid:
-        name = name.replace(ch, "_")
-    return name.strip()
+        s = s.replace(ch, "_")
+
+    # 2. Strip null bytes and other control characters
+    s = "".join(ch for ch in s if ch.isprintable() or ch == " ")
+
+    # 3. Defang path-traversal sequences
+    while ".." in s:
+        s = s.replace("..", "_")
+
+    # 4. Strip leading/trailing whitespace and dots (prevents ".foo",
+    #    "foo.", and " " / "." only filenames on Windows)
+    s = s.strip(" .")
+
+    # 5. If the result is a reserved Windows device name, prefix it
+    if s.upper() in _WINDOWS_RESERVED:
+        s = "_" + s
+
+    # 6. Truncate to a safe length (255 bytes is the Windows MAX_PATH limit
+    #    for a single component; leave some headroom for the extension)
+    if len(s.encode("utf-8")) > 200:
+        s = s.encode("utf-8")[:200].decode("utf-8", errors="ignore")
+
+    return s
 
 
 def get_platform_name(url: str) -> str:

@@ -2,6 +2,29 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.9] - 2026-06-22
+
+### Security
+- **[Command injection — history_tab]_open_path** Switched from
+  f-string shell to `subprocess.Popen(list)`. Added `os.path.abspath()`
+  and exception handling.
+- **[CSV injection — history_tab]_export_csv** Every field that starts
+  with `=+-@\t\r` is now prefixed with `'` so Excel cannot evaluate it as
+  a formula.
+- **[PowerShell injection — notifier]_notify_windows** The PowerShell
+  script is now passed as a single `-Command` argument in an args list
+  (no script file, no `-EncodedCommand`), plus `-NoProfile -NonInteractive`
+  flags and improved escaping.
+- **[Path traversal — helpers]sanitize_filename** Rejects null bytes,
+  strips `..`, handles reserved Windows device names (CON, PRN, AUX, NUL,
+  COM1-9, LPT1-9), truncates to 200 bytes, and strips leading/trailing dots.
+- **[SSRF — helpers]is_valid_url** Now rejects `file:`, `ftp:`,
+  `javascript:` and `data:` URLs — only `http`/`https` are allowed.
+- **Dependency audit** `pip-audit` confirms zero known CVEs.
+
+### Added
+- 28 unit tests covering all the above attack surfaces.
+
 ## [1.3.8] - 2026-06-22
 
 ### Fixed

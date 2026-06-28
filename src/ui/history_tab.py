@@ -9,6 +9,20 @@ from src.utils.history_manager import load_history, clear_history
 from src.utils.i18n import _
 
 
+# Characters that Excel/LibreOffice treat as the start of a formula
+# when they appear at the beginning of a cell. We prepend a single quote
+# so the value is rendered as text instead of being evaluated.
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv(value) -> str:
+    """Neutralize CSV formula injection in user-controlled strings."""
+    s = str(value) if value is not None else ""
+    if s and s[0] in _CSV_FORMULA_PREFIXES:
+        return "'" + s
+    return s
+
+
 class HistoryTab(ctk.CTkFrame):
     def __init__(self, parent, colors: dict):
         super().__init__(parent, fg_color=colors["bg_dark"], corner_radius=0)
@@ -160,16 +174,37 @@ class HistoryTab(ctk.CTkFrame):
     def _open_path(self, path: str):
         if not path:
             return
+        # Resolve to absolute path to defend against path tricks
+        try:
+            path = os.path.abspath(path)
+        except (OSError, ValueError):
+            return
         if os.name == 'nt':
             if os.path.exists(path):
                 if os.path.isfile(path):
-                    subprocess.Popen(f'explorer /select,"{path}"')
+                    # Use a list (no shell) and avoid shell metacharacters
+                    # in the path. explorer.exe accepts /select,<path> as
+                    # a single argument.
+                    try:
+                        subprocess.Popen(["explorer", f"/select,{path}"])
+                    except (OSError, FileNotFoundError):
+                        # Fall back to opening the parent folder
+                        try:
+                            os.startfile(os.path.dirname(path))
+                        except OSError:
+                            pass
                 else:
-                    os.startfile(path)
+                    try:
+                        os.startfile(path)
+                    except OSError:
+                        pass
             else:
                 dir_path = os.path.dirname(path)
-                if os.path.exists(dir_path):
-                    os.startfile(dir_path)
+                if dir_path and os.path.exists(dir_path):
+                    try:
+                        os.startfile(dir_path)
+                    except OSError:
+                        pass
 
     def _export_csv(self):
         """Export history to a CSV file in the Downloads folder."""
@@ -183,11 +218,11 @@ class HistoryTab(ctk.CTkFrame):
                 w.writerow(["title", "url", "path", "mode", "date"])
                 for item in self._all_history:
                     w.writerow([
-                        item.get("title", ""),
-                        item.get("url", ""),
-                        item.get("path", ""),
-                        item.get("mode", ""),
-                        item.get("date", ""),
+                        _sanitize_csv(item.get("title", "")),
+                        _sanitize_csv(item.get("url", "")),
+                        _sanitize_csv(item.get("path", "")),
+                        _sanitize_csv(item.get("mode", "")),
+                        _sanitize_csv(item.get("date", "")),
                     ])
             # Show a quick status message
             from tkinter import messagebox

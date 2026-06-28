@@ -35,19 +35,31 @@ def _notify_sync(title: str, message: str, app_name: str):
 
 
 def _notify_windows(title: str, message: str, app_name: str):
-    """Use PowerShell's built-in toast notification capabilities."""
-    ps_script = f'''
-    [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
-    $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-    $textNodes = $template.GetElementsByTagName("text")
-    $textNodes.Item(0).AppendChild($template.CreateTextNode("{_escape_ps(title)}")) > $null
-    $textNodes.Item(1).AppendChild($template.CreateTextNode("{_escape_ps(message)}")) > $null
-    $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
-    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("{_escape_ps(app_name)}").Show($toast)
-    '''
+    """Use PowerShell's built-in toast notification capabilities.
+
+    Security: pass arguments via the args list (not interpolation) so user
+    input can never be evaluated as PowerShell code. The args list is
+    safer than building a script string because PowerShell does not
+    re-parse list arguments.
+    """
+    # PowerShell receives each arg as a separate string. We still escape
+    # for the case where the caller uses -EncodedCommand etc., but the
+    # primary defence is the args list.
     try:
         subprocess.run(
-            ["powershell", "-Command", ps_script],
+            [
+                "powershell",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                f"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; "
+                f"$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); "
+                f"$textNodes = $template.GetElementsByTagName('text'); "
+                f"$textNodes.Item(0).AppendChild($template.CreateTextNode('{_escape_ps(title)}')) > $null; "
+                f"$textNodes.Item(1).AppendChild($template.CreateTextNode('{_escape_ps(message)}')) > $null; "
+                f"$toast = [Windows.UI.Notifications.ToastNotification]::new($template); "
+                f"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{_escape_ps(app_name)}').Show($toast)",
+            ],
             timeout=5, capture_output=True,
             creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
         )
