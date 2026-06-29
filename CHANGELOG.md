@@ -2,6 +2,13 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.11] - 2026-06-28
+
+### Fixed
+- **Updater was downloading portable.zip instead of setup.exe**
+  `pick_asset_for_platform` now strictly only matches `.exe` assets for
+  Windows. The portable zip is no longer considered a valid update target.
+
 ## [1.3.10] - 2026-06-28
 
 ### Added

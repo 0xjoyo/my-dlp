@@ -169,7 +169,7 @@ def pick_asset_for_platform(info: dict, platform: Optional[str] = None) -> Optio
 
     # Prefer installer on Windows, AppImage on Linux, etc.
     if platform.startswith("win"):
-        priority_prefixes = ("my-dlp_v", "_setup", "setup", "installer")
+        priority_prefixes = ("_setup.exe", "setup.exe", "_installer.exe", "installer.exe", "my-dlp_v")
     elif platform.startswith("linux"):
         priority_prefixes = (".AppImage", ".deb", ".rpm", "linux", "my-dlp_v")
     elif platform == "darwin":
@@ -182,14 +182,32 @@ def pick_asset_for_platform(info: dict, platform: Optional[str] = None) -> Optio
     for prefix in priority_prefixes:
         for asset in info["assets"]:
             n = name_lower(asset)
-            if prefix.lower() in n and (n.endswith((".exe", ".appimage", ".deb", ".rpm", ".dmg")) or "installer" in n or "portable" in n):
-                return asset
+            if prefix.lower() in n:
+                # Must be an executable/installer — never a zip/archive
+                if n.endswith((".exe", ".appimage", ".deb", ".rpm", ".dmg")):
+                    return asset
+                # Also accept if the name contains "installer" or "setup"
+                # (some GitHub release assets omit the .exe extension in
+                #  the display name but still link to an exe)
+                if "installer" in n or "_setup" in n or ".setup" in n:
+                    # Only if the content-type suggests it's a binary
+                    ct = (asset.get("content_type") or "").lower()
+                    if "msdownload" in ct or "octet-stream" in ct or "x-msdownload" in ct:
+                        return asset
 
-    # Fallback: first asset whose name mentions "installer" or "portable"
+    # Fallback: only accept a genuine installer/setup exe, never a zip
     for asset in info["assets"]:
         n = name_lower(asset)
-        if "installer" in n or "portable" in n:
+        if n.endswith(".exe") and ("installer" in n or "setup" in n):
             return asset
+
+    # Last resort: the first .exe asset (if any)
+    for asset in info["assets"]:
+        n = name_lower(asset)
+        if n.endswith(".exe"):
+            return asset
+
+    # Absolutely nothing usable
     return info["assets"][0] if info["assets"] else None
 
 
