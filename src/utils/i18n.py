@@ -239,6 +239,18 @@ TRANSLATIONS = {
     "tray_check_update":{"ar": "🔄 التحقق من التحديثات", "en": "🔄 Check for Updates"},
     "tray_quit":        {"ar": "❌ إغلاق البرنامج", "en": "❌ Quit my-dlp"},
     "tray_running_in":  {"ar": "my-dlp يعمل في الخلفية", "en": "my-dlp is running in the background"},
+
+    # ── YouTube Account / Cookies ──
+    "card_yt_account":  {"ar": "حساب يوتيوب", "en": "YouTube Account"},
+    "yt_auth_note":     {"ar": "سجّل الدخول ليوتيوب عشان تشوف فيديوهات 18+ أو المحتوى المحدود. اختار متصفح أو ملف cookies.", "en": "Sign in to YouTube for age-restricted or private content. Choose a browser or a cookies.txt file."},
+    "yt_cookies_browser": {"ar": "استخراج الكوكيز من المتصفح", "en": "Extract cookies from browser"},
+    "yt_cookies_browser_none": {"ar": "بدون", "en": "None"},
+    "yt_cookies_file":  {"ar": "ملف cookies.txt", "en": "cookies.txt file"},
+    "yt_cookies_file_ph": {"ar": "اختر ملف cookies.txt...", "en": "Select cookies.txt..."},
+    "yt_cookies_browse": {"ar": "📂 اختيار ملف", "en": "📂 Browse"},
+    "yt_cookies_clear":  {"ar": "🗑 مسح", "en": "🗑 Clear"},
+    "yt_auth_ok":       {"ar": "✅ تم تفعيل الكوكيز", "en": "✅ Cookies configured"},
+    "yt_auth_none":     {"ar": "⚠️ لم يتم تفعيل الكوكيز", "en": "⚠️ No cookies configured"},
 }
 
 def get_text(key: str, **kwargs) -> str:

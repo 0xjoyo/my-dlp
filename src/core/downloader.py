@@ -102,6 +102,22 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
     return opts
 
 
+def _add_cookies_opts(opts: dict, config: dict) -> None:
+    """Mutate opts with cookies/auth settings from config.
+
+    Supports two methods (file takes priority over browser):
+      1. ``youtube_cookies_file`` — path to a Netscape-format cookies.txt
+      2. ``youtube_cookies_browser`` — browser name for auto-extraction
+    """
+    file_path = (config.get("youtube_cookies_file") or "").strip()
+    browser = (config.get("youtube_cookies_browser") or "").strip()
+
+    if file_path and os.path.isfile(file_path):
+        opts["cookiefile"] = file_path
+    elif browser:
+        opts["cookiesfrombrowser"] = (browser.lower(), None, None, None)
+
+
 def _progress_hook(d: dict, task: DownloadTask):
     """Called by yt-dlp with progress updates."""
     if task.cancelled:
@@ -149,6 +165,7 @@ def download(task: DownloadTask):
         try:
             config = load_config()
             opts = _build_ydl_opts(task, config)
+            _add_cookies_opts(opts, config)
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(task.url, download=True)
                 

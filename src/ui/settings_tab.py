@@ -204,9 +204,55 @@ class SettingsTab(ctk.CTkFrame):
                      text_color=self.colors["text_primary"]
                      ).grid(row=5, column=0, sticky="ew", padx=24, pady=(0, 24))
 
-        # ── Lyrics Settings ───────────────────────────────────────────
+        # ── YouTube Account ──────────────────────────────────────────
+        yt_card = self._card(scroll, _("card_yt_account"))
+        yt_card.grid(row=2, column=0, padx=36, pady=16, sticky="ew")
+        yt_card.grid_columnconfigure(1, weight=1)
+
+        # Browser selector
+        self._setting_row(yt_card, 1, _("yt_cookies_browser"))
+        self.yt_browser_var = ctk.StringVar(value=self._config.get("youtube_cookies_browser", ""))
+        browsers = [_("yt_cookies_browser_none"), "chrome", "firefox", "edge", "brave", "opera", "vivaldi"]
+        ctk.CTkOptionMenu(yt_card, variable=self.yt_browser_var, values=browsers,
+                          height=40, corner_radius=10,
+                          fg_color=self.colors["bg_dark"], button_color=self.colors["accent"],
+                          font=ctk.CTkFont("Segoe UI", 12)
+                          ).grid(row=2, column=0, sticky="w", padx=24, pady=(0, 8))
+
+        # ... or cookies file
+        self._setting_row(yt_card, 3, _("yt_cookies_file"))
+        file_row = ctk.CTkFrame(yt_card, fg_color="transparent")
+        file_row.grid(row=4, column=0, columnspan=2, sticky="ew", padx=24, pady=(0, 16))
+        file_row.grid_columnconfigure(0, weight=1)
+
+        self.yt_cookies_file_var = ctk.StringVar(value=self._config.get("youtube_cookies_file", ""))
+        self.yt_cookies_entry = ctk.CTkEntry(file_row, textvariable=self.yt_cookies_file_var,
+                                              placeholder_text=_("yt_cookies_file_ph"),
+                                              height=42, corner_radius=10,
+                                              font=ctk.CTkFont("Segoe UI", 12),
+                                              fg_color=self.colors["bg_dark"],
+                                              border_color=self.colors["border"],
+                                              text_color=self.colors["text_primary"])
+        self.yt_cookies_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+
+        ctk.CTkButton(file_row, text=_("yt_cookies_browse"), width=90, height=42, corner_radius=10,
+                      fg_color=self.colors["border"], hover_color=self.colors["accent"],
+                      font=ctk.CTkFont("Segoe UI", 12),
+                      command=self._browse_yt_cookies).grid(row=0, column=1, padx=(0, 6))
+        ctk.CTkButton(file_row, text=_("yt_cookies_clear"), width=60, height=42, corner_radius=10,
+                      fg_color=self.colors["border"], hover_color=self.colors["accent"],
+                      font=ctk.CTkFont("Segoe UI", 12),
+                      command=lambda: self.yt_cookies_file_var.set("")).grid(row=0, column=2)
+
+        # Status indicator
+        self.yt_auth_status = ctk.CTkLabel(yt_card, text="", font=ctk.CTkFont("Segoe UI", 12))
+        self.yt_auth_status.grid(row=5, column=0, sticky="w", padx=24, pady=(0, 20))
+        self._update_yt_auth_status()
+
+        # ── Lyrics Settings ──
         lyr_card = self._card(scroll, _("card_lyr_set"))
-        lyr_card.grid(row=2, column=0, padx=36, pady=16, sticky="ew")
+        lyr_card.grid(row=3, column=0, padx=36, pady=16, sticky="ew")
+        lyr_card.grid_columnconfigure(0, weight=1)
 
         self._setting_row(lyr_card, 1, _("set_lyr_prov"))
         self.lyrics_prov_var = ctk.StringVar(value=self._config.get("lyrics_provider", "lrclib"))
@@ -217,9 +263,9 @@ class SettingsTab(ctk.CTkFrame):
                            font=ctk.CTkFont("Segoe UI", 13)
                            ).grid(row=2, column=0, sticky="w", padx=24, pady=(0, 24))
 
-        # ── Appearance & Language ─────────────────────────────────────
+        # ── Appearance & Language ──
         app_card = self._card(scroll, _("card_app_set"))
-        app_card.grid(row=3, column=0, padx=36, pady=16, sticky="ew")
+        app_card.grid(row=4, column=0, padx=36, pady=16, sticky="ew")
         app_card.grid_columnconfigure((0, 1), weight=1)
 
         self._setting_row(app_card, 1, _("set_lang"))
@@ -269,7 +315,7 @@ class SettingsTab(ctk.CTkFrame):
 
         # ── Maintenance ───────────────────────────────────────────────
         maint_card = self._card(scroll, _("card_maintenance") if _("card_maintenance") != "card_maintenance" else "Maintenance")
-        maint_card.grid(row=4, column=0, padx=36, pady=16, sticky="ew")
+        maint_card.grid(row=5, column=0, padx=36, pady=16, sticky="ew")
 
         update_row = ctk.CTkFrame(maint_card, fg_color="transparent")
         update_row.grid(row=1, column=0, sticky="ew", padx=24, pady=(16, 24))
@@ -292,7 +338,7 @@ class SettingsTab(ctk.CTkFrame):
 
         # ── Save button ───────────────────────────────────────────────
         save_row = ctk.CTkFrame(scroll, fg_color="transparent")
-        save_row.grid(row=5, column=0, padx=36, pady=(16, 40), sticky="ew")
+        save_row.grid(row=6, column=0, padx=36, pady=(16, 40), sticky="ew")
 
         self.save_btn = ctk.CTkButton(
             save_row, text=_("btn_save"), height=54, corner_radius=14,
@@ -327,6 +373,30 @@ class SettingsTab(ctk.CTkFrame):
         )
         if path:
             self.ffmpeg_var.set(path)
+
+    def _browse_yt_cookies(self):
+        path = filedialog.askopenfilename(
+            title=_("yt_cookies_file"),
+            filetypes=[("Netscape cookies", "*.txt"), ("Text", "*.txt"), ("All", "*.*")]
+        )
+        if path:
+            self.yt_cookies_file_var.set(path)
+            self.yt_browser_var.set(_("yt_cookies_browser_none"))
+
+    def _update_yt_auth_status(self):
+        """Update the YouTube auth status label."""
+        f = (self.yt_cookies_file_var.get() or "").strip()
+        b = self.yt_browser_var.get()
+        # The "None" option is translated, so we check if it's a known browser name
+        known = ["chrome", "firefox", "edge", "brave", "opera", "vivaldi"]
+        if f and os.path.isfile(f):
+            self.yt_auth_status.configure(text=_("yt_auth_ok"), text_color=self.colors["success"])
+        elif b.lower() in known:
+            self.yt_auth_status.configure(text=_("yt_auth_ok"), text_color=self.colors["success"])
+        else:
+            self.yt_auth_status.configure(text=_("yt_auth_none"), text_color=self.colors["text_secondary"])
+        # Schedule auto-refresh in case user types a path manually
+        self.after(2000, self._update_yt_auth_status)
 
     # ── yt-dlp auto-updater ───────────────────────────────────────────
 
@@ -383,6 +453,13 @@ class SettingsTab(ctk.CTkFrame):
         config["subtitle_download"] = self.sub_var.get()
         config["spotify_client_id"] = self.sp_id_var.get().strip()
         config["spotify_client_secret"] = self.sp_secret_var.get().strip()
+
+        # YouTube cookies
+        browser_raw = self.yt_browser_var.get()
+        known = ["chrome", "firefox", "edge", "brave", "opera", "vivaldi"]
+        config["youtube_cookies_browser"] = browser_raw if browser_raw.lower() in known else ""
+        config["youtube_cookies_file"] = self.yt_cookies_file_var.get().strip()
+
         config["lyrics_provider"] = self.lyrics_prov_var.get()
         config["appearance_mode"] = self.appearance_var.get()
         config["language"] = self.lang_var.get()

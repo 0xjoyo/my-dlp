@@ -1,12 +1,12 @@
 [Setup]
 AppName=my-dlp
-AppVersion=1.3.11
+AppVersion=1.3.12
 AppPublisher=0xjoyo
 AppPublisherURL=https://github.com/0xjoyo/my-dlp
 DefaultDirName={pf}\my-dlp
 DefaultGroupName=my-dlp
 UninstallDisplayIcon={app}\my-dlp.exe
-VersionInfoVersion=1.3.11.0
+VersionIn...[truncated]
 Compression=lzma2
 SolidCompression=yes
 OutputDir=dist

@@ -8,6 +8,8 @@ from typing import Callable, Optional
 import yt_dlp
 
 from src.utils.helpers import format_duration, format_views
+from src.utils.config_manager import load_config
+from src.core.downloader import _add_cookies_opts
 
 
 def fetch_info(url: str, callback: Callable, error_callback: Callable = None):
@@ -23,6 +25,7 @@ def fetch_info(url: str, callback: Callable, error_callback: Callable = None):
                 "skip_download": True,
                 "extract_flat": "in_playlist",  # fast playlist scan
             }
+            _add_cookies_opts(opts, load_config())
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
 
@@ -147,6 +150,7 @@ def search_youtube(query: str, max_results: int = 8,
                 "skip_download": True,
                 "extract_flat": True,
             }
+            _add_cookies_opts(opts, load_config())
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
 

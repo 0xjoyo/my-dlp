@@ -2,6 +2,22 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.12] - 2026-06-28
+
+### Added
+- **YouTube Account settings** — Sign in for age-restricted/private content
+  - Extract cookies from browser (Chrome, Firefox, Edge, Brave, Opera, Vivaldi)
+  - Or load a Netscape cookies.txt file manually
+  - Status indicator showing whether cookies are configured or missing
+- **Cookies support in yt-dlp** — Both `fetch_info` and `download` now
+  share the same `_add_cookies_opts()` helper. Cookies from settings are
+  passed to every yt-dlp call.
+
+### Fixed
+- **Updater was downloading portable.zip instead of setup.exe**
+  `pick_asset_for_platform` now strictly only matches `.exe` assets for
+  Windows. The portable zip is no longer considered a valid update target.
+
 ## [1.3.11] - 2026-06-28
 
 ### Fixed

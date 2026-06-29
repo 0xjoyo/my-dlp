@@ -59,6 +59,9 @@ DEFAULTS = {
     "language": "en",
     "speed_limit": 0,
     "update_dismissed_version": "",
+    # YouTube authentication — empty = no cookies
+    "youtube_cookies_file": "",   # path to Netscape cookies.txt
+    "youtube_cookies_browser": "",  # "chrome" / "firefox" / "edge" / "brave" / "opera" / "vivaldi" / ""
 }
 
 
