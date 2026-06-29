@@ -17,7 +17,8 @@ class DownloadTask:
                  error_callback: Callable = None, metadata: dict = None):
         self.url = url
         self.mode = mode          # "video" or "audio"
-        self.quality = quality    # "best", "1080p", "720p", "480p", "360p", "320kbps", "192kbps", "128kbps"
+        self.quality = quality    # Video: "8K", "4K", "1440p", "1080p", "720p", "480p", "360p", "best"
+                                   # Audio: "320kbps", "192kbps", "128kbps"
         self.output_dir = output_dir
         self.progress_callback = progress_callback
         self.done_callback = done_callback
@@ -69,7 +70,9 @@ def _build_ydl_opts(task: DownloadTask, config: dict) -> dict:
     else:  # video
         fmt = config.get("default_video_format", "mp4")
         quality_map = {
+            "8K":    "bestvideo[height<=4320]+bestaudio/best",
             "4K":    "bestvideo[height<=2160]+bestaudio/best",
+            "1440p": "bestvideo[height<=1440]+bestaudio/best[height<=1440]/best",
             "1080p": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
             "720p":  "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
             "480p":  "bestvideo[height<=480]+bestaudio/best[height<=480]/best",

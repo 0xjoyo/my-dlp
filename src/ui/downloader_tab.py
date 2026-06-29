@@ -203,7 +203,7 @@ class DownloaderTab(ctk.CTkFrame):
         self.quality_var = ctk.StringVar(value="1080p")
         self.quality_menu = ctk.CTkOptionMenu(
             opt_card, variable=self.quality_var,
-            values=["4K", "1080p", "720p", "480p", "360p"],
+            values=["8K", "4K", "1440p", "1080p", "720p", "480p", "360p", "best"],
             height=42, corner_radius=10, fg_color=self.colors["bg_dark"], button_color=self.colors["accent"], font=ctk.CTkFont("Segoe UI", 14),
         )
         self.quality_menu.grid(row=1, column=1, sticky="ew", padx=(0, 20), pady=16)
@@ -311,7 +311,7 @@ class DownloaderTab(ctk.CTkFrame):
             self.quality_var.set("192kbps")
             self.tag_frame.grid() # show tag editor
         else:
-            self.quality_menu.configure(values=["4K", "1080p", "720p", "480p", "360p"])
+            self.quality_menu.configure(values=["8K", "4K", "1440p", "1080p", "720p", "480p", "360p", "best"])
             self.quality_var.set("1080p")
             self.tag_frame.grid_remove() # hide tag editor
 

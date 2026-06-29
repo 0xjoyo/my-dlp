@@ -2,6 +2,18 @@
 
 All notable changes to my-dlp are documented in this file.
 
+## [1.3.10] - 2026-06-28
+
+### Added
+- **8K and 1440p video quality** New format entries in both the dropdown
+  and the yt-dlp quality map.
+- **"best" quality option** Downloads the highest available resolution
+  without any cap.
+
+### Changed
+- Quality dropdown now shows: `8K → 4K → 1440p → 1080p → 720p → 480p → 360p → best`
+  (was 5 options, now 8).
+
 ## [1.3.9] - 2026-06-22
 
 ### Security
